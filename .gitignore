@@ -3,3 +3,5 @@
 .idea
 *.txt
 *.csv
+euler/filter_pincode_tokens.ipynb
+euler/playground.ipynb
