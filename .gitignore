@@ -5,3 +5,4 @@
 *.csv
 euler/filter_pincode_tokens.ipynb
 euler/playground.ipynb
+*.DS_Store*
