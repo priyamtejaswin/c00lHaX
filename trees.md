@@ -1,4 +1,4 @@
-# Notes on Trees. And stuff.
+# Notes on Trees and Stuff
 ...In VIM. All of it. Oh yeah. Deal with it.
 
 *Only took me 2 hours to begin using screen buffers with a new keymap for splits.*
@@ -7,7 +7,7 @@
 
 Main reference is [the ESL book](https://web.stanford.edu/~hastie/ElemStatLearn/).
 
-## Introduction.
+## Regression.
 Two main algorithms: CART and C4.5. A regression tree splits the feature-space into "rectangles" -- you pick a feature at random, take a cut at random, and the data is split on that cut.
 
 In 2d feature-space, these are actual rectangles.
@@ -40,4 +40,13 @@ In practice, we avoid the threshold convergence -- a better, more worthwhile spl
 
 With the data points at the leaf nodes, a pruned tree is simply a sub-tree $T_c$ with some intermediate nodes missing from the master tree $T_0$. We will *try* different sub-trees and pick the one which minimizes the test-error. Of course, trying all possible combinations ($2^n$ for $n$ intermediate nodes) is not an option.
 
+The approach we will use is called **Cost-Complexity Pruning**. For given $T$, we define the cost as 
+$$
+C_{\alpha}(T) = SSE(T) + \alpha |T|
+$$
 
+where $SSE$ is the Sum of Squared Errors and $|T|$ is the number of leaf nodes in the tree.
+
+This will penalize larger trees, prone to overfitting, with $\alpha = 0$ being the OG trees. The best $\alpha$ is arrived at by k-fold CV on the training data. For each $\alpha$, find the intermediate node (above two leaf nodes) that leads to the lowest cost. This is the best sub-tree for $\alpha=1$. We use this sub-tree to remove the best intermediate node for $\alpha=2$. This continues for different values of $\alpha$. Finally, we select the one with the best average CV score.
+
+## Classification.
