@@ -1,11 +1,13 @@
-# Notes on Trees and Stuff
-...In VIM. All of it. Oh yeah. Deal with it.
+# Of Trees and Forests ...
+*-- Priyam Tejaswin, 7th July 2019, Bengaluru*
+
+I took these notes in VIM. All of it. Yeah. Deal with it.
 
 *Only took me 2 hours to begin using screen buffers with a new keymap for splits.*
 
 *Perhaps this was not such a good idea...*
 
-Main reference is [the ESL book](https://web.stanford.edu/~hastie/ElemStatLearn/).
+Main reference is [the ESL book](https://web.stanford.edu/~hastie/ElemStatLearn/) and the Wiki pages.
 
 ## Regression.
 Two main algorithms: CART and C4.5. A decision tree splits the feature-space into "halves" -- you pick a feature at random, take a cut at random, and the data is split on that cut.
