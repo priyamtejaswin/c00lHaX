@@ -8,9 +8,9 @@
 Main reference is [the ESL book](https://web.stanford.edu/~hastie/ElemStatLearn/).
 
 ## Regression.
-Two main algorithms: CART and C4.5. A regression tree splits the feature-space into "rectangles" -- you pick a feature at random, take a cut at random, and the data is split on that cut.
+Two main algorithms: CART and C4.5. A decision tree splits the feature-space into "halves" -- you pick a feature at random, take a cut at random, and the data is split on that cut.
 
-In 2d feature-space, these are actual rectangles.
+In 2d feature-space, these are rectangular partitions.
 
 `TODO: Add an image here`
 
@@ -19,7 +19,7 @@ The **response** from each region is the average of all the target values $y_i$ 
 How to find the best partition? Consider a variable $j$ and a split point $s$. With these selected, we can define two regions $R_1, R_2$ such that
 
 $$
-R_1(j, s) = {X|X_j < s}\ \text{and} \ R_2(j, s) = {X|X_j > s}
+R_1(j, s) = \{X|X_j < s\}\ \text{and} \ R_2(j, s) = \{X|X_j > s\}
 $$
 
 We want to find these regions such that the overall Sum of Squared Errors (SSE) in the data is minimal
@@ -53,18 +53,24 @@ This will penalize larger trees, prone to overfitting, with $\alpha = 0$ being t
 The target is now one of $K$ classes. We need to change our splitting criteria from squared error to something more suitable for this discrete data. Given a region $m$ and target class $k$, we can define the proportion of that class in the leaf as
 
 $$
-\hat{p_{mk}} = \frac{1}{N_m} \sum_{x_i \in R_m} I(y_i = k)
+\hat{p}_{mk} = \frac{1}{N_m} \sum_{x_i \in R_m} I(y_i = k)
 $$
 
 At prediction time, the *class* of the data is the class that has the highest count in the leaf -- i.e. the majority class.
 
-If we define $k(m) = \text{arg max}_k\ \hat{p_{mk}}$ as the probability of the most popular class in region $m$, then the **Misclassification Error** for the region is $1 -  \hat{p_{mk(m)}}$. The objective in some sense is still the same -- this error will be 0 if we have the same predicted label for every sample in a leaf/region. We will use this for pruning.
+If we define $k(m) = \text{arg max}_k\ \hat{p}_{mk}$ as the probability of the most popular class in region $m$, then the **Misclassification Error** for the region is $1 -  \hat{p}_{mk(m)}$. The objective in some sense is still the same -- this error will be 0 if we have the same predicted label for every sample in a leaf/region. We will use this for pruning.
 
 Another impurity measure is the **Gini Index**. This is defined over all classes present in the leaf.
 
 $$
-\sum_{k=1}^K \hat{p_{mk}}  (1 - \hat{p_{mk}}) 
+\sum_{k=1}^K \hat{p}_{mk}  (1 - \hat{p}_{mk}) 
 $$
 
 We use Gini for the tree fitting.
 
+## Instability and Bagging.
+A small change in the data can result in vastly different splits. Also, the errors in the splits cascades. **Bootstrap Aggregation** i.e. **Bagging** is used to counter this.
+
+Given a training set with $m$ points, you sample a subset of the data -- say $n$ points -- at random *with replacement* $k$ different times into $k$ different bags. This is the **Bootstraping** part. If $n = m$, then around 60% of unique points from the original set should be present in every bag -- rest can be repeated. 60% comes from $1 - \frac{1}{e}$
+
+We now fit a tree on every bag to get a $k$ different models. For regression, we take the average of all model predictions. For classification, we take the majority vote across the models. This is the **Aggregation** part.
