@@ -50,3 +50,21 @@ where $SSE$ is the Sum of Squared Errors and $|T|$ is the number of leaf nodes i
 This will penalize larger trees, prone to overfitting, with $\alpha = 0$ being the OG trees. The best $\alpha$ is arrived at by k-fold CV on the training data. For each $\alpha$, find the intermediate node (above two leaf nodes) that leads to the lowest cost. This is the best sub-tree for $\alpha=1$. We use this sub-tree to remove the best intermediate node for $\alpha=2$. This continues for different values of $\alpha$. Finally, we select the one with the best average CV score.
 
 ## Classification.
+The target is now one of $K$ classes. We need to change our splitting criteria from squared error to something more suitable for this discrete data. Given a region $m$ and target class $k$, we can define the proportion of that class in the leaf as
+
+$$
+\hat{p_{mk}} = \frac{1}{N_m} \sum_{x_i \in R_m} I(y_i = k)
+$$
+
+At prediction time, the *class* of the data is the class that has the highest count in the leaf -- i.e. the majority class.
+
+If we define $k(m) = \text{arg max}_k\ \hat{p_{mk}}$ as the probability of the most popular class in region $m$, then the **Misclassification Error** for the region is $1 -  \hat{p_{mk(m)}}$. The objective in some sense is still the same -- this error will be 0 if we have the same predicted label for every sample in a leaf/region. We will use this for pruning.
+
+Another impurity measure is the **Gini Index**. This is defined over all classes present in the leaf.
+
+$$
+\sum_{k=1}^K \hat{p_{mk}}  (1 - \hat{p_{mk}}) 
+$$
+
+We use Gini for the tree fitting.
+
