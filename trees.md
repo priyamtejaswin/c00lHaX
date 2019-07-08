@@ -30,10 +30,10 @@ $$
 $$
 
 Algorithm:
-1. Take all the data into one collection and calculate the SSE.
-2. Iterate over all variables and the values per variable to find possible split points. Select the best one which minimizes the SSE compared to the parent SSE.
-3. Partition the data into two regions based on the split.
-4. Repeat from (2) for the two new regions until convergence.
+1.  Take all the data into one collection and calculate the SSE.
+2.  Iterate over all variables and the values per variable to find possible split points. Select the best one which minimizes the SSE compared to the parent SSE.
+3.  Partition the data into two regions based on the split.
+4.  Repeat from (2) for the two new regions until convergence.
 
 The convergence criterion could be a minimum sample size per leaf or that the reduction in SSE has to exceed some threshold.
 
