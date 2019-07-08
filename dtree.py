@@ -9,24 +9,17 @@ import ipdb
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-np.random.seed(23)
 
 data = np.linspace(0, 5, 50)
 target = np.sin(data)
 noise = np.random.normal(np.zeros_like(target), 0.1)
 target = target + noise
 
-plt.scatter(data, target)
-plt.show()
-
 def sse(x):
     hat = np.mean(x)
     return np.sum(np.square(x - hat))
 
 def find_split(r):
-    ipdb.set_trace()
-    print "Tracing ..."
-
     x = r[:, :-1]
     y = r[:, -1]
 
@@ -40,7 +33,8 @@ def find_split(r):
         for s in values:
             reg1 = r[r[:, f] < s]
             reg2 = r[r[:, f] >= s]
-            # A moment of silence for Numpy indexing and silence ...
+            # A moment of silence for those who are doing
+            # this without Numpy indexing and slicing ...
 
             if reg1.shape[0]<5 or reg2.shape[0]<5:
                 continue
@@ -55,16 +49,37 @@ def find_split(r):
     else:
         return best_split
 
-def split_region(r):
+def split_region(r, splits):
     "The targets are the last col."
     best_fs = find_split(r)
-    return best_fs
+    if best_fs is False:
+        print best_fs
+    else:
+        print best_fs
+        splits.append(best_fs)
+
+        f, s = best_fs
+        reg1 = r[r[:, f] < s]
+        reg2 = r[r[:, f] >= s]
+
+        split_region(reg1, splits)
+        split_region(reg2, splits)
+
+    return splits
+
 
 combined = np.vstack((data, target)).T
-print combined.shape
-n1_split = find_split(combined)
-print n1_split
-plt.scatter(data, target)
-plt.plot([n1_split[1], n1_split[1]], [0, 1])
+all_splits = split_region(combined, [])
+
+# Vizzz
+plt.scatter(data, target, c='black')
+cmap = plt.cm.get_cmap('hsv', len(all_splits))
+
+for i, (f,s) in enumerate(all_splits):
+    plt.plot([s, s], [-2, 2], c=cmap(i), label='split %d'%i)
+
+plt.xlabel('x')
+plt.ylabel('sin(x)')
+plt.legend()
 plt.show()
 
