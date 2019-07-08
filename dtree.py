@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """
 Priyam Tejaswin (tejaswin.p@flipkart.com)
-Common Decision Tree base class.
+CART style regression tree implementation.
+Written in VIM. Brevity was the only option.
 """
 
 import ipdb
@@ -9,7 +10,6 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 np.random.seed(23)
-
 
 data = np.linspace(0, 5, 50)
 target = np.sin(data)
