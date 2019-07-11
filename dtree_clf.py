@@ -10,6 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from collections import Counter
 
+np.random.seed(23)
+
 centers = [
 [5, 3],
 [6, 5],
@@ -50,7 +52,7 @@ def find_split(r):
             # A moment of silence for those who are doing
             # this without Numpy indexing and slicing ...
 
-            if reg1.shape[0]<10 or reg2.shape[0]<10:
+            if reg1.shape[0]<15 or reg2.shape[0]<15:
                 continue
 
             split_error = impurity(reg1[:, -1]) + impurity(reg2[:, -1])
@@ -70,9 +72,10 @@ def split_region(r, splits):
         print best_fs
     else:
         print best_fs
-        splits.append(best_fs)
-
         f, s = best_fs
+        f_min, f_max = np.min(r[:, 1 - f]), np.max(r[:, 1 - f])
+        splits.append( (best_fs, (f_min, f_max)) )
+
         reg1 = r[r[:, f] < s]
         reg2 = r[r[:, f] >= s]
 
@@ -87,7 +90,14 @@ all_splits = split_region(combined, [])
 # Vizzz
 for i in range(len(centers)):
     x, y = data[i*25 : (i+1)*25].T
-    plt.scatter(x, y, label=str(i))
+    plt.scatter(x, y)
 
-for f, s in all_splits:
-    print f, s
+for ix, tdata in enumerate(all_splits):
+    (f, s), (f_min, f_max) = tdata
+    if f == 0:
+        plt.plot([s, s], [f_min, f_max], label=ix)
+    else:
+        plt.plot([f_min, f_max], [s, s], label=ix)
+
+plt.legend()
+plt.show()
