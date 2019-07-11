@@ -50,10 +50,10 @@ def find_split(r):
             # A moment of silence for those who are doing
             # this without Numpy indexing and slicing ...
 
-            if reg1.shape[0]<5 or reg2.shape[0]<5:
+            if reg1.shape[0]<10 or reg2.shape[0]<10:
                 continue
 
-            split_error = sse(reg1[:, -1]) + sse(reg2[:, -1])
+            split_error = impurity(reg1[:, -1]) + impurity(reg2[:, -1])
             if split_error < best_error:
                 best_error = split_error
                 best_split = (f, s)
@@ -62,3 +62,32 @@ def find_split(r):
         return False
     else:
         return best_split
+
+def split_region(r, splits):
+    "The targets are the last col."
+    best_fs = find_split(r)
+    if best_fs is False:
+        print best_fs
+    else:
+        print best_fs
+        splits.append(best_fs)
+
+        f, s = best_fs
+        reg1 = r[r[:, f] < s]
+        reg2 = r[r[:, f] >= s]
+
+        split_region(reg1, splits)
+        split_region(reg2, splits)
+
+    return splits
+
+combined = np.concatenate((data, target.reshape(-1, 1)), axis=-1)
+all_splits = split_region(combined, [])
+
+# Vizzz
+for i in range(len(centers)):
+    x, y = data[i*25 : (i+1)*25].T
+    plt.scatter(x, y, label=str(i))
+
+for f, s in all_splits:
+    print f, s
