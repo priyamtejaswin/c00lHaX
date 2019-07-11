@@ -92,12 +92,17 @@ for i in range(len(centers)):
     x, y = data[i*25 : (i+1)*25].T
     plt.scatter(x, y)
 
+plt.xlabel('dim 0')
+plt.ylabel('dim 1')
+plt.title('sample data for classification')
+
 for ix, tdata in enumerate(all_splits):
+    ix += 1
     (f, s), (f_min, f_max) = tdata
     if f == 0:
-        plt.plot([s, s], [f_min, f_max], label=ix)
+        plt.plot([s, s], [f_min, f_max], label=str('split #%d'%ix))
     else:
-        plt.plot([f_min, f_max], [s, s], label=ix)
+        plt.plot([f_min, f_max], [s, s], label=str('split #%d'%ix))
 
 plt.legend()
 plt.show()
