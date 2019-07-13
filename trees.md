@@ -1,7 +1,8 @@
-# Of Trees and Forests ...
-*-- Priyam Tejaswin, 7th July 2019, Bengaluru*
+% Of Trees and Forests
+% Priyam Tejaswin
+% July 7, 2019
 
-I took these notes in VIM. All of it. Yeah. Deal with it.
+I took these notes in VIM. All of it. Yeah. Deal with it. Rendered in Latex with `pandoc`. 
 
 *Only took me 2 hours to begin using screen buffers with a new keymap for splits.*
 
@@ -30,10 +31,11 @@ $$
 $$
 
 Algorithm:
-1.  Take all the data into one collection and calculate the SSE.
-2.  Iterate over all variables and the values per variable to find possible split points. Select the best one which minimizes the SSE compared to the parent SSE.
-3.  Partition the data into two regions based on the split.
-4.  Repeat from (2) for the two new regions until convergence.
+
+1. Take all the data into one collection and calculate the SSE.
+2. Iterate over all variables and the values per variable to find possible split points. Select the best one which minimizes the SSE compared to the parent SSE.
+3. Partition the data into two regions based on the split.
+4. Repeat from (2) for the two new regions until convergence.
 
 The convergence criterion could be a minimum sample size per leaf or that the reduction in SSE has to exceed some threshold.
 
@@ -76,3 +78,8 @@ A small change in the data can result in vastly different splits. Also, the erro
 Given a training set with $m$ points, you sample a subset of the data -- say $n$ points -- at random *with replacement* $k$ different times into $k$ different bags. This is the **Bootstraping** part. If $n = m$, then around 60% of unique points from the original set should be present in every bag -- rest can be repeated. 60% comes from $1 - \frac{1}{e}$
 
 We now fit a tree on every bag to get a $k$ different models. For regression, we take the average of all model predictions. For classification, we take the majority vote across the models. This is the **Aggregation** part.
+
+The reduction in variance comes from the **Boostrap** process. The with-replacement sampling creates *different* datasets since only a part of the original dataset is repeated in every bag. Hence, the trees you train will be un-correlated. Individual trees will be sensitive to the noise in their data, but the averaged predictions will have less variance than a single tree.
+
+# Random Forests.
+After bagging, in the RF algorithm, every split is made from a **random subset** of features. This is done to further de-correlate the trees. For classification problems, the suggested number is $\sqrt{p}$. For regression, it's $p/3$. Here $p$ is the original number of features in the dataset.
