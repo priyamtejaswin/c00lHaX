@@ -15,7 +15,7 @@ Two main algorithms: CART and C4.5. A decision tree splits the feature-space int
 
 In 2d feature-space, these are rectangular partitions.
 
-`TODO: Add an image here`
+![Splits learnt by my Decision Tree Classifier.](dtree_clf.png){ width=400px }
 
 The **response** from each region is the average of all the target values $y_i$ in that region.
 
