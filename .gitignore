@@ -1,3 +1,4 @@
+*.swp
 .ipynb_checkpoints
 */.ipynb_checkpoints
 .idea
@@ -8,3 +9,4 @@ euler/playground.ipynb
 *.DS_Store*
 *.tgz
 *.pdf
+ner_perceptron/brown*
