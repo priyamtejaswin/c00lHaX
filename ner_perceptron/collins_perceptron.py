@@ -54,6 +54,7 @@ For a word as position $i$, the history $h_i = {w_i, w_{i+1}, w_{i+2}, w_{i-1},
 
 [20:12] - Assuming none are rare and got the features. Now to convert to vector.
 
+### 2nd Sep
 [00:09] - Got distracted. Resuming now.
 - Trying to wrap my head around the feature representation.
 - A feature here is just a <condition,tag> pair. Global feature is sum of 
@@ -65,6 +66,12 @@ it. The training procedure updates these alphas.
 cardinal, but splitting on '/' causes a problem. Skipping seqs which contain 
 this stuff for now. Will track how many seqs/tokens I skip.
 - TryExcept only skips 160 of 45k sequences.
+
+[02:25] - Feature map is ready.
+
+[03:06] - Weights are init now. Will write training loop next.
+- Unrelated, but Alien Covenant looks promising so far ... halfway through.
+Logging off. Will resume tomorrow.
 
 """
 
@@ -152,9 +159,10 @@ def load_files(files_list):
     return data
 
 
-def get_feature_map(list_of_seq_feats):
+def get_feature_map_and_weights(list_of_seq_feats):
     ft2ix = {}
     ix2ft = []
+    weights = []
     c = 0
 
     for seq in tqdm(list_of_seq_feats):
@@ -162,10 +170,11 @@ def get_feature_map(list_of_seq_feats):
             if feat not in ft2ix:
                 ft2ix[feat] = c
                 ix2ft.append(feat)
+                weights.append(0.0)
                 c += 1
 
     print "Found %d features."%c
-    return ft2ix, ix2ft
+    return ft2ix, ix2ft, weights
 
 
 @plac.annotations(
@@ -192,7 +201,7 @@ def main(path_brown_corpus):
     train_data = load_files(train_files)
     train_feats = [get_features(w, t) for w,t in tqdm(train_data)]
 
-    ft2ix, ix2ft = get_feature_map(train_feats)
+    ft2ix, ix2ft, weights = get_feature_map(train_feats)
 
 
 if __name__ == '__main__':
