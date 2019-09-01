@@ -60,12 +60,19 @@ For a word as position $i$, the history $h_i = {w_i, w_{i+1}, w_{i+2}, w_{i-1},
 counts of said local features. Every global feature has a weight (alpha) with 
 it. The training procedure updates these alphas.
 
+[01:38] - Trying to generate the feature map/matrix now.
+- Running into some *complex* tokens like "5-1/2/cd". The tag here is "cd",i.e. 
+cardinal, but splitting on '/' causes a problem. Skipping seqs which contain 
+this stuff for now. Will track how many seqs/tokens I skip.
+- TryExcept only skips 160 of 45k sequences.
+
 """
 
 
 import os
 import sys
 import plac
+import ipdb
 import random
 from tqdm import tqdm
 
@@ -78,7 +85,11 @@ def get_clean_line(line):
         words, tags = [], []
 
         for token in line.split():
-            word, tag = token.strip().split('/')
+            try:
+                word, tag = token.strip().split('/')
+            except:
+                return False  # Is this allowed?
+
             if word == tag:  # Ignore.
                 pass
             elif tag == '.':  # Sentence closer.
@@ -122,15 +133,22 @@ def get_features(words, tags, w_is_rare=None):
 def load_files(files_list):
     data = []
     c = 0
+    skipped = 0
 
     for f in tqdm(files_list):
         with open(f, 'r') as fp:
             for line in fp.readlines():
                 tokens = get_clean_line(line)
-                if tokens is not None:
+                if tokens is False:
+                    skipped += 1
+                elif tokens is None:
+                    pass
+                else:
                     c += 1
                     data.append(tokens)
+
     print "Found %d sequences."%c
+    print "Skipped %d sequences."%skipped
     return data
 
 
@@ -141,7 +159,7 @@ def get_feature_map(list_of_seq_feats):
 
     for seq in tqdm(list_of_seq_feats):
         for feat in seq:
-            if feat not in fmap:
+            if feat not in ft2ix:
                 ft2ix[feat] = c
                 ix2ft.append(feat)
                 c += 1
@@ -171,6 +189,10 @@ def main(path_brown_corpus):
     print "Found %d train files."%len(train_files)
     print "Found %d test files."%len(test_files)
 
+    train_data = load_files(train_files)
+    train_feats = [get_features(w, t) for w,t in tqdm(train_data)]
+
+    ft2ix, ix2ft = get_feature_map(train_feats)
 
 
 if __name__ == '__main__':
