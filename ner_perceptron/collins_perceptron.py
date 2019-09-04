@@ -73,6 +73,39 @@ this stuff for now. Will track how many seqs/tokens I skip.
 - Unrelated, but Alien Covenant looks promising so far ... halfway through.
 Logging off. Will resume tomorrow.
 
+[13:02] - Resuming now. But before that, here's my short rant about Covenant.
+What a disappointment. There was so much potential to explore the story arc 
+of the Engineers -- why did they create life and then decided to destroy it? 
+why did they stop midway (Prometheus)? It's clear that David wants to create, 
+but why destroy the engineers as well? Even the action/horror was not that 
+immersive -- it was not really close quarters so there was never a threat to 
+anyone on board the Covenant. Hopefully someone will get the bright idea of 
+converting this into a tv-show and plug in the gaps. I know a lot of people 
+on the *interwebs* who'd pay good money to watch that, including yours truly. 
+
+And now, back to our regular programming. *Pun intended*.
+- Writing the main training loop now.
+
+[13:22] - Idiot. Figured out why it has to be a $H \times T$ matrix.
+
+### 3rd Sep
+[01:48] - Decoding is tough.
+I've been trying to implement Viterbi for Collins' perceptron model. There are 
+two issues here. The first is that he says we can use the same `deocding` as 
+the Max-Ent models, but that paper uses beam-search, which is a greedy decoder. 
+
+The second problem -- and this is slightly related -- is how we implement 
+Viterbi. Beyond a greedy-search (where we fix the current best tag and move on) 
+we'll have to treat the previous tag as unknown.
+
+Our $S x T$ matrix will now need to consider all possible <PREV_TAG> features 
+as opposed to just considering the ones observed during training.
+
+Will tackle this after I wake up.
+
+Also, Sharp Objects is really addictive.
+
+[02:35] - Logging off.
 """
 
 
@@ -81,6 +114,7 @@ import sys
 import plac
 import ipdb
 import random
+import numpy as np
 from tqdm import tqdm
 
 
@@ -132,7 +166,7 @@ def get_features(words, tags, w_is_rare=None):
             features.append(((words[ix],
                               words[ix+1], words[ix+2],
                               words[ix-1], words[ix-2],
-                              tags[ix-1], tags[ix-2]), tags[ix]))
+                              tags[ix-1]), tags[ix]))
 
     return features
 
@@ -160,21 +194,71 @@ def load_files(files_list):
 
 
 def get_feature_map_and_weights(list_of_seq_feats):
-    ft2ix = {}
-    ix2ft = []
-    weights = []
-    c = 0
+    ft2ix, ix2ft = {}, []
+    tag2ix, ix2tag = {}, []
+    f, t = 0, 0
 
     for seq in tqdm(list_of_seq_feats):
-        for feat in seq:
+        for feat, tag in seq:
             if feat not in ft2ix:
-                ft2ix[feat] = c
+                ft2ix[feat] = f
                 ix2ft.append(feat)
-                weights.append(0.0)
-                c += 1
+                f += 1
 
-    print "Found %d features."%c
-    return ft2ix, ix2ft, weights
+            if tag not in tag2ix:
+                tag2ix[tag] = t
+                ix2tag.append(tag)
+                t += 1
+
+    print "Found %d features."%f
+    print "Found %d tags."%t
+
+    weights = np.zeros((f, t))
+
+    return ft2ix, ix2ft, tag2ix, ix2tag, weights
+
+
+def decode(words, ft2ix, tag2ix, ix2tag, weights):
+    size = len(words)
+    words = [None, None] + words + [None, None]
+
+    delta, psi = [], []
+
+    start = 2
+
+    # Stage 1.
+    for ix in range(start, start+size):
+        ipdb.set_trace()
+
+        f = [words[ix],
+             words[ix+1], words[ix+2],
+             words[ix-1], words[ix-2], None]
+
+        if ix == 2:  # Init.
+            _d, _p = [], []
+
+            row = ft2ix[tuple(f)]
+            for t in ix2tag:
+                col = tag2ix[t]
+                _d.append(weights[row, col])
+                _p.append(0)
+
+        else:
+            for curr in ix2tag:
+                temp = []
+
+                for prev in ix2tag:
+                    f[-1] = prev
+                    row = ft2ix[tuple(f)]
+                    col = tag2ix[curr]
+
+                    temp.append(delta[ix-1][tag2ix[prev]] + weights[row, col])
+
+                _d.append(max(temp))
+                _p.append(np.argmax(temp))
+
+        delta.append(_d)
+        psi.append(_p)
 
 
 @plac.annotations(
@@ -201,7 +285,12 @@ def main(path_brown_corpus):
     train_data = load_files(train_files)
     train_feats = [get_features(w, t) for w,t in tqdm(train_data)]
 
-    ft2ix, ix2ft, weights = get_feature_map(train_feats)
+    ft2ix, ix2ft, tag2ix, ix2tag, weights  = get_feature_map_and_weights(train_feats)
+    ipdb.set_trace()
+
+    sample = list(train_feats[0][0][0][:3])
+    print sample
+    decode(sample, ft2ix, tag2ix, ix2tag, weights)
 
 
 if __name__ == '__main__':
