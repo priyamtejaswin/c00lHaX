@@ -127,6 +127,13 @@ but I'm sure there's a way to remove that for loop, or at least move to faster
 comprehensions.
 - I've accounted for edge cases and stuff.
 - Will test with full training routine after having food.
+
+[19:50] - Resuming now. Match starts at 11:30PM.
+
+[21:00] - Wrote the single train step.
+- Since arrays can be changed by reference, I make it a point NOT to update the
+param values in-place inside the `train_step` function, but to send the changes
+and update in the training loop.
 """
 
 
@@ -138,6 +145,7 @@ import random
 random.seed(23)
 import numpy as np
 from tqdm import tqdm
+from collections import defaultdict
 
 
 def get_clean_line(line):
@@ -291,7 +299,36 @@ def decode(words, ft2ix, tag2ix, ix2tag, weights):
         qt = psi[t][qt]
         decoding.append(qt)
 
-    return decoding
+    return decoding, [ix2tag[i] for i in decoding]
+
+
+def train_step(wdseq, tgseq, ft2ix, tag2ix, ix2tag, weights):
+    # Given word seq, get the predicted tag seq.
+    # `deixs` -- tag indices.
+    # `deseq` -- tag strings.
+    deixs, deseq = decode(wdseq, ft2ix, tag2ix, ix2tag, weights)
+
+    # Extract features from truth and pred pairs.
+    gold_feats = get_features(wdseq, tgseq)
+    pred_feats = get_features(wdseq, deseq)
+
+    change_pos = defaultdict(int)
+
+    for feats, tag in gold_feats:
+        c = tag2ix[tag]
+        for val in feats:
+            r = ft2ix[val]
+            change_pos[(r, c)] += 1
+
+    for feats, tag in pred_feats:
+        c = tag2ix[tag]
+        for val in feats:
+            r = ft2ix[val]
+            change_pos[(r, c)] -= 1
+
+    ipdb.set_trace()
+    return change_pos
+
 
 
 @plac.annotations(
@@ -319,10 +356,12 @@ def main(path_brown_corpus):
     train_feats = [get_features(w, t) for w,t in tqdm(train_data)]
 
     ft2ix, ix2ft, tag2ix, ix2tag, weights  = get_feature_map_and_weights(train_feats)
-    ipdb.set_trace()
 
-    sample = 'from time to time'.split()
-    decode(sample, ft2ix, tag2ix, ix2tag, weights)
+    ipdb.set_trace()
+    sample_w, sample_t = train_data[0]
+    change_pos = train_step(sample_w, sample_t, ft2ix, tag2ix, ix2tag, weights)
+    print change_pos
+
 
 if __name__ == '__main__':
     plac.call(main)
