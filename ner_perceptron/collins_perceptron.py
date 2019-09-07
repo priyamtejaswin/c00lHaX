@@ -134,6 +134,10 @@ comprehensions.
 - Since arrays can be changed by reference, I make it a point NOT to update the
 param values in-place inside the `train_step` function, but to send the changes
 and update in the training loop.
+
+[21:14] - Main training loop is running.
+- But it's slow af. Will try to speed it up. Current rate is ~4s/it
+- Going for a run now.
 """
 
 
@@ -326,8 +330,20 @@ def train_step(wdseq, tgseq, ft2ix, tag2ix, ix2tag, weights):
             r = ft2ix[val]
             change_pos[(r, c)] -= 1
 
-    ipdb.set_trace()
     return change_pos
+
+
+def train_loop(train_data, ft2ix, tag2ix, ix2tag, init_weights):
+    print "Running main training loop ..."
+    weights = np.copy(init_weights)
+
+    for wdseq, tgseq in tqdm(train_data):
+        change_pos = train_step(wdseq, tgseq, ft2ix, tag2ix, ix2tag, weights)
+        for (r, c), v in change_pos.items():
+            if v != 0:
+                weights[r, c] += v
+
+    return weights
 
 
 
@@ -361,6 +377,8 @@ def main(path_brown_corpus):
     sample_w, sample_t = train_data[0]
     change_pos = train_step(sample_w, sample_t, ft2ix, tag2ix, ix2tag, weights)
     print change_pos
+
+    train_loop(train_data, ft2ix, tag2ix, ix2tag, weights)
 
 
 if __name__ == '__main__':
