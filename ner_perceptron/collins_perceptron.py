@@ -18,7 +18,7 @@ Extended the general perceptron algorithm to `structured` predition:
 - YT just recommended Deftones' Saturday Night Wrist. Just so good ...
 - The paper uses two datasets: Penn TB for POS tagging and a different 
 one for base-noun phrase recognition.
-- Sticking with the POS taggubg task -- unable to find the other dataset.
+- Sticking with the POS tagging task -- unable to find the other dataset.
 - Features from [Ratnaparkhi, 1996](https://www.aclweb.org/anthology/W96-0213)
 - Read the feature list. Again, seems *simple enough* One issue that I can see 
 is that only one or two `tag` related features will be associated with every 
@@ -106,6 +106,27 @@ Will tackle this after I wake up.
 Also, Sharp Objects is really addictive.
 
 [02:35] - Logging off.
+
+### 6th Sep
+[20:18] - After reading some more, I think I misunderstood the features.
+- My feature set is huge because I take a CROSS of the <tag2,tag1,tag> features 
+and also the <word,tag> features. Since both can be used to predict the tag, 
+I feel that it can be relaxed, i.e. split into two classes. This is also a bit 
+similar to the trigram features that was described in section 2.1 of Collins' 
+paper.
+- To further simplify the algorithm (and my understanding of it), I'll limit
+the tag history to just the previous tag. This will also keep the Viterbi
+implementation *vanilla* (i.e. 1st order markov).
+
+### 7th Sep - Porier VS Khabib is TONIGHT!
+[14:03] - Resmuing the feature generator changes.
+
+[16:44] - Wasted a lot of time in between ... but I wrote the decoder.
+- Decoding works. Takes some time (because all possible tags are considered)
+but I'm sure there's a way to remove that for loop, or at least move to faster
+comprehensions.
+- I've accounted for edge cases and stuff.
+- Will test with full training routine after having food.
 """
 
 
@@ -114,6 +135,7 @@ import sys
 import plac
 import ipdb
 import random
+random.seed(23)
 import numpy as np
 from tqdm import tqdm
 
@@ -150,7 +172,7 @@ def get_features(words, tags, w_is_rare=None):
         w_is_rare = [False for x in words]
 
     size = len(words)
-    _pad_false = lambda s: [None, None] + s + [None, None]
+    _pad_false = lambda s: [None] + s
 
     words = _pad_false(words)
     tags = _pad_false(tags)
@@ -158,15 +180,12 @@ def get_features(words, tags, w_is_rare=None):
 
     features = []
 
-    for ix in range(2, 2+size):
+    for ix in range(1, 1+size):
         if rare[ix] is True:
             pass  # We'll figure this out later.
         else:
             # $h_i = {w_i, w_{i+1}, w_{i+2}, w_{i-1}, w_{i-2}, t_{i-1}, t_{i-2}}
-            features.append(((words[ix],
-                              words[ix+1], words[ix+2],
-                              words[ix-1], words[ix-2],
-                              tags[ix-1]), tags[ix]))
+            features.append(((tags[ix-1], words[ix]), tags[ix]))
 
     return features
 
@@ -199,11 +218,12 @@ def get_feature_map_and_weights(list_of_seq_feats):
     f, t = 0, 0
 
     for seq in tqdm(list_of_seq_feats):
-        for feat, tag in seq:
-            if feat not in ft2ix:
-                ft2ix[feat] = f
-                ix2ft.append(feat)
-                f += 1
+        for feats, tag in seq:
+            for val in feats:
+                if val not in ft2ix:
+                    ft2ix[val] = f
+                    ix2ft.append(val)
+                    f += 1
 
             if tag not in tag2ix:
                 tag2ix[tag] = t
@@ -220,45 +240,58 @@ def get_feature_map_and_weights(list_of_seq_feats):
 
 def decode(words, ft2ix, tag2ix, ix2tag, weights):
     size = len(words)
-    words = [None, None] + words + [None, None]
+    num_feats = len(ft2ix)
+    num_tags = len(tag2ix)
 
     delta, psi = [], []
 
-    start = 2
+    # Stage1
+    for t, word in enumerate(words):  # `t` is time.
+        wix = ft2ix.get(word, None)
 
-    # Stage 1.
-    for ix in range(start, start+size):
-        ipdb.set_trace()
+        if t == 0:
+            # Prev tag is fixed. Current tag (i.e. state)
+            # needs to be determined, based on the current
+            # word only (prev tag will be None).
+            if wix is None:
+                continue
 
-        f = [words[ix],
-             words[ix+1], words[ix+2],
-             words[ix-1], words[ix-2], None]
-
-        if ix == 2:  # Init.
             _d, _p = [], []
 
-            row = ft2ix[tuple(f)]
-            for t in ix2tag:
-                col = tag2ix[t]
-                _d.append(weights[row, col])
+            for tix in range(num_tags):
+                _d.append(weights[wix, tix])
                 _p.append(0)
 
         else:
-            for curr in ix2tag:
+            # Here, we run the |s|^2 loop.
+            # Again, we use the `word` feature only if
+            # it is present.
+            _d, _p = [], []
+            for curr in range(num_tags):  # `curr` represents the current tag.
                 temp = []
+                for prev in range(num_tags):
+                    score = delta[t-1][prev] + weights[prev, curr]
+                    if wix is not None:
+                        score += weights[wix, curr]
 
-                for prev in ix2tag:
-                    f[-1] = prev
-                    row = ft2ix[tuple(f)]
-                    col = tag2ix[curr]
-
-                    temp.append(delta[ix-1][tag2ix[prev]] + weights[row, col])
+                    temp.append(score)
 
                 _d.append(max(temp))
                 _p.append(np.argmax(temp))
 
         delta.append(_d)
         psi.append(_p)
+
+    # Stage2
+    decoding = []
+    qt = np.argmax(delta[-1])
+    decoding.append(qt)
+
+    for t in range(size)[::-1][:-1]:
+        qt = psi[t][qt]
+        decoding.append(qt)
+
+    return decoding
 
 
 @plac.annotations(
@@ -288,10 +321,8 @@ def main(path_brown_corpus):
     ft2ix, ix2ft, tag2ix, ix2tag, weights  = get_feature_map_and_weights(train_feats)
     ipdb.set_trace()
 
-    sample = list(train_feats[0][0][0][:3])
-    print sample
+    sample = 'from time to time'.split()
     decode(sample, ft2ix, tag2ix, ix2tag, weights)
-
 
 if __name__ == '__main__':
     plac.call(main)
