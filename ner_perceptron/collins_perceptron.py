@@ -131,13 +131,18 @@ comprehensions.
 [19:50] - Resuming now. Match starts at 11:30PM.
 
 [21:00] - Wrote the single train step.
-- Since arrays can be changed by reference, I make it a point NOT to update the
-param values in-place inside the `train_step` function, but to send the changes
-and update in the training loop.
+- I make it a point NOT to update the param values in-place inside the 
+`train_step` function, but to send the changes and update in the training loop.
 
 [21:14] - Main training loop is running.
 - But it's slow af. Will try to speed it up. Current rate is ~4s/it
 - Going for a run now.
+
+### 8th Sep - Porier lost. GG. Working on speeding up the decoding.
+- Maybe i'll try out a Python profiler now?
+
+[17:09] - Tried replacing loops with comprehensions. Some speedups.
+But not enough.
 """
 
 
@@ -145,11 +150,24 @@ import os
 import sys
 import plac
 import ipdb
+import time
 import random
 random.seed(23)
 import numpy as np
 from tqdm import tqdm
 from collections import defaultdict
+
+
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+
+        print '%r %2.4f sec' % (method.__name__, te-ts)
+        return result
+
+    return timed
 
 
 def get_clean_line(line):
@@ -250,6 +268,7 @@ def get_feature_map_and_weights(list_of_seq_feats):
     return ft2ix, ix2ft, tag2ix, ix2tag, weights
 
 
+# @timeit
 def decode(words, ft2ix, tag2ix, ix2tag, weights):
     size = len(words)
     num_feats = len(ft2ix)
@@ -257,7 +276,10 @@ def decode(words, ft2ix, tag2ix, ix2tag, weights):
 
     delta, psi = [], []
 
+    list_num_tags = range(num_tags)
+
     # Stage1
+    s1_st = time.time()
     for t, word in enumerate(words):  # `t` is time.
         wix = ft2ix.get(word, None)
 
@@ -268,27 +290,20 @@ def decode(words, ft2ix, tag2ix, ix2tag, weights):
             if wix is None:
                 continue
 
-            _d, _p = [], []
-
-            for tix in range(num_tags):
-                _d.append(weights[wix, tix])
-                _p.append(0)
+            _d = [weights[wix, tix] for tix in list_num_tags]
+            _p = np.zeros(num_tags, dtype=int).tolist()
 
         else:
             # Here, we run the |s|^2 loop.
             # Again, we use the `word` feature only if
             # it is present.
             _d, _p = [], []
-            for curr in range(num_tags):  # `curr` represents the current tag.
-                temp = []
-                for prev in range(num_tags):
-                    score = delta[t-1][prev] + weights[prev, curr]
-                    if wix is not None:
-                        score += weights[wix, curr]
+            for curr in list_num_tags:  # `curr` represents the current tag.
+                temp = [delta[t-1][prev] + weights[prev, curr] + \
+                        weights[wix, curr] if wix is not None else 0 \
+                        for prev in list_num_tags]
 
-                    temp.append(score)
-
-                _d.append(max(temp))
+                _d.append(np.max(temp))
                 _p.append(np.argmax(temp))
 
         delta.append(_d)
@@ -306,6 +321,7 @@ def decode(words, ft2ix, tag2ix, ix2tag, weights):
     return decoding, [ix2tag[i] for i in decoding]
 
 
+# @timeit
 def train_step(wdseq, tgseq, ft2ix, tag2ix, ix2tag, weights):
     # Given word seq, get the predicted tag seq.
     # `deixs` -- tag indices.
@@ -363,7 +379,7 @@ def main(path_brown_corpus):
              os.listdir(path_brown_corpus) if len(name) == 4 and name[0] == 'c']
 
     random.shuffle(files)
-    tsplit = int(0.8 * len(files))
+    tsplit = int(0.9 * len(files))
     train_files, test_files = files[:tsplit], files[tsplit:]
     print "Found %d train files."%len(train_files)
     print "Found %d test files."%len(test_files)
@@ -373,7 +389,6 @@ def main(path_brown_corpus):
 
     ft2ix, ix2ft, tag2ix, ix2tag, weights  = get_feature_map_and_weights(train_feats)
 
-    ipdb.set_trace()
     sample_w, sample_t = train_data[0]
     change_pos = train_step(sample_w, sample_t, ft2ix, tag2ix, ix2tag, weights)
     print change_pos
