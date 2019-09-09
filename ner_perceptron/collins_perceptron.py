@@ -143,6 +143,17 @@ comprehensions.
 
 [17:09] - Tried replacing loops with comprehensions. Some speedups.
 But not enough.
+
+[19:03] - Readup on Cython documentation and code examples.
+- I'll have to make changes to the decoding function so that it's easier to
+work with Ctypes.
+
+[22:39] - DONE.
+- Wrote the full decoder in Cython. Stage1 (the biggest culprit) is fully
+ported. Stage2 still pending.
+- Functionally tested against random data w.r.t. the vanilla decoder.
+- Feels like it's 10x faster.  Will integrate with full code tomorrow. Eating
+dinner and logging off.
 """
 
 
@@ -269,45 +280,51 @@ def get_feature_map_and_weights(list_of_seq_feats):
 
 
 # @timeit
-def decode(words, ft2ix, tag2ix, ix2tag, weights):
-    size = len(words)
-    num_feats = len(ft2ix)
-    num_tags = len(tag2ix)
+def decode(words_ixs, num_tags, weights):
+    # `word_ixs` is the indices of the word, already mapped.
+    # `-1` means OOV.
+    size = len(words_ixs)
 
-    delta, psi = [], []
+    delta = np.zeros((size, num_tags), dtype=float)
+    psi = np.zeros((size, num_tags), dtype=int)
 
     list_num_tags = range(num_tags)
 
     # Stage1
     s1_st = time.time()
-    for t, word in enumerate(words):  # `t` is time.
-        wix = ft2ix.get(word, None)
-
+    for t, wix in enumerate(words_ixs):  # `t` is time.
         if t == 0:
             # Prev tag is fixed. Current tag (i.e. state)
             # needs to be determined, based on the current
             # word only (prev tag will be None).
-            if wix is None:
+            if wix is -1:
                 continue
 
-            _d = [weights[wix, tix] for tix in list_num_tags]
-            _p = np.zeros(num_tags, dtype=int).tolist()
+            for tix in list_num_tags:
+                delta[t, tix] = weights[wix, tix]
+
+            #_d = [weights[wix, tix] for tix in list_num_tags]
+            #_p = np.zeros(num_tags, dtype=int).tolist()
 
         else:
             # Here, we run the |s|^2 loop.
             # Again, we use the `word` feature only if
             # it is present.
-            _d, _p = [], []
+
+            #_d, _p = [], []
             for curr in list_num_tags:  # `curr` represents the current tag.
                 temp = [delta[t-1][prev] + weights[prev, curr] + \
-                        weights[wix, curr] if wix is not None else 0 \
+                        weights[wix, curr] if wix != -1 else 0 \
                         for prev in list_num_tags]
 
-                _d.append(np.max(temp))
-                _p.append(np.argmax(temp))
+                delta[t, curr] = np.max(temp)
+                psi[t, curr] = np.argmax(temp)
 
-        delta.append(_d)
-        psi.append(_p)
+                #_d.append(np.max(temp))
+                #_p.append(np.argmax(temp))
+
+        #delta.append(_d)
+        #psi.append(_p)
 
     # Stage2
     decoding = []
@@ -318,7 +335,7 @@ def decode(words, ft2ix, tag2ix, ix2tag, weights):
         qt = psi[t][qt]
         decoding.append(qt)
 
-    return decoding, [ix2tag[i] for i in decoding]
+    return decoding
 
 
 # @timeit
@@ -326,7 +343,10 @@ def train_step(wdseq, tgseq, ft2ix, tag2ix, ix2tag, weights):
     # Given word seq, get the predicted tag seq.
     # `deixs` -- tag indices.
     # `deseq` -- tag strings.
-    deixs, deseq = decode(wdseq, ft2ix, tag2ix, ix2tag, weights)
+    # `wdixs` -- word indices.
+    wdixs = [ft2ix.get(w, -1) for w in wdseq]
+    deixs = decode(wdixs, len(ix2tag), weights)
+    deseq = [ix2tag[i] for i in deixs]
 
     # Extract features from truth and pred pairs.
     gold_feats = get_features(wdseq, tgseq)
