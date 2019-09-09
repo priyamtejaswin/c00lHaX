@@ -10,3 +10,5 @@ euler/playground.ipynb
 *.tgz
 *.pdf
 ner_perceptron/brown*
+*.pyc
+*.so
