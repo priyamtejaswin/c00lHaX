@@ -41,7 +41,7 @@ def decode(int[:] words_ixs, int num_tags, np.ndarray[INT_DTYPE_t, ndim=2] weigh
     cdef np.ndarray[FLOAT_DTYPE_t, ndim=1] temp = np.zeros(num_tags,
                                                            dtype=FLOAT_DTYPE)
 
-    for t in words_ixs:  # `t` is time.
+    for t in range(size):  # `t` is time.
         wix = words_ixs[t]
 
         if t == 0:

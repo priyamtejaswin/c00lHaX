@@ -154,6 +154,11 @@ ported. Stage2 still pending.
 - Functionally tested against random data w.r.t. the vanilla decoder.
 - Feels like it's 10x faster.  Will integrate with full code tomorrow. Eating
 dinner and logging off.
+
+### 9th Sep
+[23:33] - Cleaned up the directory. Got the Makefile to work. Updated .gitignore
+- Working on integration now.
+- *ohyeah* it's working. And it's fast.
 """
 
 
@@ -164,6 +169,8 @@ import ipdb
 import time
 import random
 random.seed(23)
+import array
+import viterbi
 import numpy as np
 from tqdm import tqdm
 from collections import defaultdict
@@ -274,7 +281,7 @@ def get_feature_map_and_weights(list_of_seq_feats):
     print "Found %d features."%f
     print "Found %d tags."%t
 
-    weights = np.zeros((f, t))
+    weights = np.zeros((f, t), dtype=int)
 
     return ft2ix, ix2ft, tag2ix, ix2tag, weights
 
@@ -345,7 +352,8 @@ def train_step(wdseq, tgseq, ft2ix, tag2ix, ix2tag, weights):
     # `deseq` -- tag strings.
     # `wdixs` -- word indices.
     wdixs = [ft2ix.get(w, -1) for w in wdseq]
-    deixs = decode(wdixs, len(ix2tag), weights)
+    wdixs = array.array('i', wdixs)
+    deixs = viterbi.decode(wdixs, len(ix2tag), weights)
     deseq = [ix2tag[i] for i in deixs]
 
     # Extract features from truth and pred pairs.
