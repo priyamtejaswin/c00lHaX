@@ -1,10 +1,9 @@
-#"""
 #created at: Sun Sep  8 19:44:28 2019
 #created by: Priyam Tejaswin (tejaswin.p@flipkart.com)
 #
 #Viterbi in Cython.
-#Go baby go!
-#"""
+#Why? Bcuz
+#Aag lagadey baby fire.
 
 import array
 from cpython cimport array
