@@ -159,6 +159,10 @@ dinner and logging off.
 [23:33] - Cleaned up the directory. Got the Makefile to work. Updated .gitignore
 - Working on integration now.
 - *ohyeah* it's working. And it's fast.
+
+### 10th Sep
+[23:17] - TIL tqdm let's you print without breaking the progress bar.
+- Writing the loop for testing now.
 """
 
 
@@ -346,7 +350,7 @@ def decode(words_ixs, num_tags, weights):
 
 
 # @timeit
-def train_step(wdseq, tgseq, ft2ix, tag2ix, ix2tag, weights):
+def forward(wdseq, tgseq, ft2ix, ix2tag, weights):
     # Given word seq, get the predicted tag seq.
     # `deixs` -- tag indices.
     # `deseq` -- tag strings.
@@ -360,6 +364,10 @@ def train_step(wdseq, tgseq, ft2ix, tag2ix, ix2tag, weights):
     gold_feats = get_features(wdseq, tgseq)
     pred_feats = get_features(wdseq, deseq)
 
+    return gold_feats, pred_feats
+
+
+def train_step(gold_feats, pred_feats, ft2ix, tag2ix):
     change_pos = defaultdict(int)
 
     for feats, tag in gold_feats:
@@ -377,12 +385,28 @@ def train_step(wdseq, tgseq, ft2ix, tag2ix, ix2tag, weights):
     return change_pos
 
 
+def test_step(gold_feats, pred_feats):
+    acc, total = 0, 0
+    for ix, v in enumerate(gold_feats):
+        total += 1
+        if v == pred_feats[ix]:
+            acc += 1
+
+    return acc * 1.0 / total
+
+
 def train_loop(train_data, ft2ix, tag2ix, ix2tag, init_weights):
     print "Running main training loop ..."
     weights = np.copy(init_weights)
 
+    counter = 0
     for wdseq, tgseq in tqdm(train_data):
-        change_pos = train_step(wdseq, tgseq, ft2ix, tag2ix, ix2tag, weights)
+        counter += 1
+        if counter % 1000 == 0:
+            tqdm.write("Completed %d samples."%counter)
+
+        tr_gold, tr_pred = forward(wdseq, tgseq, ft2ix, ix2tag, weights)
+        change_pos = train_step(tr_gold, tr_pred, ft2ix, tag2ix)
         for (r, c), v in change_pos.items():
             if v != 0:
                 weights[r, c] += v
@@ -392,7 +416,7 @@ def train_loop(train_data, ft2ix, tag2ix, ix2tag, init_weights):
 
 
 @plac.annotations(
-    path_brown_corpus = ("Path to Brown Corpus file.", 'positional', None, str)
+    path_brown_corpus = ("Path to Brown Corpus dir.", 'positional', None, str)
 )
 def main(path_brown_corpus):
     """
@@ -417,9 +441,8 @@ def main(path_brown_corpus):
 
     ft2ix, ix2ft, tag2ix, ix2tag, weights  = get_feature_map_and_weights(train_feats)
 
-    sample_w, sample_t = train_data[0]
-    change_pos = train_step(sample_w, sample_t, ft2ix, tag2ix, ix2tag, weights)
-    print change_pos
+    # Preparing the test data.
+    test_data = load_files(test_files)
 
     train_loop(train_data, ft2ix, tag2ix, ix2tag, weights)
 
