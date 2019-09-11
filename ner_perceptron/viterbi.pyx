@@ -5,7 +5,7 @@
 #Why? Bcuz
 #Aag lagadey baby fire.
 
-import array
+cimport cython
 from cpython cimport array
 
 import numpy as np
@@ -23,6 +23,9 @@ def reply(int[:] nums):
     print nums
     return nums[0], one_arr[0]
 
+
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+@cython.wraparound(False)
 def decode(int[:] words_ixs, int num_tags, np.ndarray[INT_DTYPE_t, ndim=2] weights):
     # `word_ixs` is the indices of the word, already mapped.
     # `-1` means OOV.
@@ -47,7 +50,7 @@ def decode(int[:] words_ixs, int num_tags, np.ndarray[INT_DTYPE_t, ndim=2] weigh
             # Prev tag is fixed. Current tag (i.e. state)
             # needs to be determined, based on the current
             # word only (prev tag will be None).
-            if wix is -1:
+            if wix == -1:
                 continue
 
             for tix in list_num_tags:
@@ -75,12 +78,12 @@ def decode(int[:] words_ixs, int num_tags, np.ndarray[INT_DTYPE_t, ndim=2] weigh
                 #_p.append(np.argmax(temp))
 
     # Stage2
-    decoding = []
-    cdef int qt = np.argmax(delta[-1])
-    decoding.append(qt)
+    cdef np.ndarray[INT_DTYPE_t, ndim=1] decoding = np.zeros(size, dtype=INT_DTYPE)
+    cdef int qt = np.argmax(delta[size-1])
+    decoding[size-1] = qt
 
-    for t in range(size)[::-1][:-1]:
+    for t in range(size-1, 0, -1):
         qt = psi[t, qt]
-        decoding.append(qt)
+        decoding[t-1] = qt
 
     return decoding

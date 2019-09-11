@@ -17,8 +17,8 @@ word_ixs = array.array('i', range(10))
 num_tags = 50
 weights = np.random.randint(10, size=(500, num_tags), dtype=int)
 
-#print viterbi.decode(word_ixs, num_tags, weights)
-#print decode(word_ixs, num_tags, weights)
+print viterbi.decode(word_ixs, num_tags, weights)
+print decode(word_ixs, num_tags, weights)[::-1]
 
 times = timeit.Timer(partial(decode, word_ixs, num_tags, weights)).repeat(3, 100)
 print "vanilla:", min(times)/100.0
