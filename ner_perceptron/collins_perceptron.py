@@ -163,6 +163,19 @@ dinner and logging off.
 ### 10th Sep
 [23:17] - TIL tqdm let's you print without breaking the progress bar.
 - Writing the loop for testing now.
+
+### 12th Sep - I've been debugging this since yesterday. I'm stooopid.
+- Features are getting mixed up in the `ix2ft` array and the weights matrix.
+- Isolating the word/observation features from the tag/transition features
+should solve the problem. Current results are random. It's not learning anything
+meaningful. Logging off.
+
+### 13th Sep - [01:29] - Updated the entire code to transition and observation
+features. Still no progress. I'm starting to doubt my Viterbi implementation. So
+first, I'll ditch Viterbi and implement a greedy approach -- should work well.
+I'll also unit-test the Viterbi module with sample data to see if it can decode
+the obvious sequences. 
+- Logging off.
 """
 
 
@@ -264,6 +277,35 @@ def load_files(files_list):
     return data
 
 
+def get_words_tags_weights(list_of_seq_feats):
+    word2ix, ix2word = {}, []
+    tag2ix, ix2tag = {}, []
+    w, t = 0, 0
+
+    for seq_feats in tqdm(list_of_seq_feats):
+        for (prevt, word), tag in seq_feats:
+            if prevt not in tag2ix:
+                tag2ix[prevt] = t
+                ix2tag.append(prevt)
+                t += 1
+
+            if tag not in tag2ix:
+                tag2ix[tag] = t
+                ix2tag.append(tag)
+                t += 1
+
+            if word not in word2ix:
+                word2ix[word] = w
+                ix2word.append(word)
+                w += 1
+
+    print "Found %d words."%w
+    print "Found %d tags."%t
+
+    return word2ix, ix2word, tag2ix, ix2tag,\
+           np.zeros((w, t), dtype=int), np.zeros((t, t), dtype=int)
+
+
 def get_feature_map_and_weights(list_of_seq_feats):
     ft2ix, ix2ft = {}, []
     tag2ix, ix2tag = {}, []
@@ -282,6 +324,11 @@ def get_feature_map_and_weights(list_of_seq_feats):
                 ix2tag.append(tag)
                 t += 1
 
+            if tag not in ft2ix:
+                ft2ix[tag] = f
+                ix2ft.append(tag)
+                f += 1
+
     print "Found %d features."%f
     print "Found %d tags."%t
 
@@ -291,7 +338,7 @@ def get_feature_map_and_weights(list_of_seq_feats):
 
 
 # @timeit
-def decode(words_ixs, num_tags, weights):
+def decode(words_ixs, num_tags, wObs, wTags):
     # `word_ixs` is the indices of the word, already mapped.
     # `-1` means OOV.
     size = len(words_ixs)
@@ -302,7 +349,6 @@ def decode(words_ixs, num_tags, weights):
     list_num_tags = range(num_tags)
 
     # Stage1
-    s1_st = time.time()
     for t, wix in enumerate(words_ixs):  # `t` is time.
         if t == 0:
             # Prev tag is fixed. Current tag (i.e. state)
@@ -312,7 +358,7 @@ def decode(words_ixs, num_tags, weights):
                 continue
 
             for tix in list_num_tags:
-                delta[t, tix] = weights[wix, tix]
+                delta[t, tix] = wObs[wix, tix]
 
             #_d = [weights[wix, tix] for tix in list_num_tags]
             #_p = np.zeros(num_tags, dtype=int).tolist()
@@ -324,8 +370,8 @@ def decode(words_ixs, num_tags, weights):
 
             #_d, _p = [], []
             for curr in list_num_tags:  # `curr` represents the current tag.
-                temp = [delta[t-1][prev] + weights[prev, curr] + \
-                        weights[wix, curr] if wix != -1 else 0 \
+                temp = [delta[t-1][prev] + wTags[prev, curr] + \
+                        wObs[wix, curr] if wix != -1 else 0 \
                         for prev in list_num_tags]
 
                 delta[t, curr] = np.max(temp)
@@ -350,14 +396,14 @@ def decode(words_ixs, num_tags, weights):
 
 
 # @timeit
-def forward(wdseq, tgseq, ft2ix, ix2tag, weights):
+def forward(wdseq, tgseq, word2ix, ix2tag, wObs, wTags):
     # Given word seq, get the predicted tag seq.
     # `deixs` -- tag indices.
     # `deseq` -- tag strings.
     # `wdixs` -- word indices.
-    wdixs = [ft2ix.get(w, -1) for w in wdseq]
+    wdixs = [word2ix.get(w, -1) for w in wdseq]
     wdixs = array.array('i', wdixs)
-    deixs = viterbi.decode(wdixs, len(ix2tag), weights)
+    deixs = decode(wdixs, len(ix2tag), wObs, wTags)
     deseq = [ix2tag[i] for i in deixs]
 
     # Extract features from truth and pred pairs.
@@ -367,22 +413,28 @@ def forward(wdseq, tgseq, ft2ix, ix2tag, weights):
     return gold_feats, pred_feats
 
 
-def train_step(gold_feats, pred_feats, ft2ix, tag2ix):
-    change_pos = defaultdict(int)
+def train_step(gold_feats, pred_feats, word2ix, tag2ix):
+    obs_pos = defaultdict(int)
+    tag_pos = defaultdict(int)
 
-    for feats, tag in gold_feats:
+    for (prevt, word), tag in gold_feats:
         c = tag2ix[tag]
-        for val in feats:
-            r = ft2ix[val]
-            change_pos[(r, c)] += 1
+        w = word2ix[word]
+        obs_pos[(w, c)] += 1
 
-    for feats, tag in pred_feats:
+        t = tag2ix[prevt]
+        tag_pos[(t, c)] += 1
+
+
+    for (prevt, word), tag in pred_feats:
         c = tag2ix[tag]
-        for val in feats:
-            r = ft2ix[val]
-            change_pos[(r, c)] -= 1
+        w = word2ix[word]
+        obs_pos[(w, c)] += -1
 
-    return change_pos
+        t = tag2ix[prevt]
+        tag_pos[(t, c)] += -1
+
+    return obs_pos, tag_pos
 
 
 def test_step(gold_feats, pred_feats):
@@ -392,26 +444,39 @@ def test_step(gold_feats, pred_feats):
         if v == pred_feats[ix]:
             acc += 1
 
-    return acc * 1.0 / total
+    return acc, total
 
 
-def train_loop(train_data, ft2ix, tag2ix, ix2tag, init_weights):
+def train_loop(train_data, word2ix, tag2ix, ix2tag, _iwObs, _iwTags, test_data):
     print "Running main training loop ..."
-    weights = np.copy(init_weights)
+    wObs, wTags = np.copy(_iwObs), np.copy(_iwTags)
 
     counter = 0
     for wdseq, tgseq in tqdm(train_data):
         counter += 1
-        if counter % 1000 == 0:
-            tqdm.write("Completed %d samples."%counter)
+        if counter % 30 == 0:
+            test_acc, test_total = 0, 0
+            for te_wd, te_tg in tqdm(test_data):
+                _g, _p = forward(te_wd, te_tg, word2ix, ix2tag, wObs, wTags)
+                acc, tot = test_step(_g, _p)
+                test_acc += acc
+                test_total += tot
 
-        tr_gold, tr_pred = forward(wdseq, tgseq, ft2ix, ix2tag, weights)
-        change_pos = train_step(tr_gold, tr_pred, ft2ix, tag2ix)
-        for (r, c), v in change_pos.items():
+            tqdm.write("Completed %d samples. Accuracy: %f"%\
+                        (counter, test_acc*1.0/test_total))
+
+        tr_gold, tr_pred = forward(wdseq, tgseq, word2ix, ix2tag, wObs, wTags)
+        obs_pos, tag_pos = train_step(tr_gold, tr_pred, word2ix, tag2ix)
+
+        for (r, c), v in obs_pos.items():
             if v != 0:
-                weights[r, c] += v
+                wObs[r, c] += v
 
-    return weights
+        for (r, c), v in tag_pos.items():
+            if v != 0:
+                wTags[r, c] += v
+
+    return wObs, wTags
 
 
 
@@ -430,21 +495,21 @@ def main(path_brown_corpus):
     files = [os.path.join(path_brown_corpus, name) for name in 
              os.listdir(path_brown_corpus) if len(name) == 4 and name[0] == 'c']
 
-    random.shuffle(files)
-    tsplit = int(0.9 * len(files))
-    train_files, test_files = files[:tsplit], files[tsplit:]
-    print "Found %d train files."%len(train_files)
-    print "Found %d test files."%len(test_files)
+    data = load_files(files[:1])
+    random.shuffle(data)
 
-    train_data = load_files(train_files)
+    tsplit = int(0.4 * len(data))
+    train_data, test_data = data[:tsplit], data[tsplit:]
+    print "Train seqs:", len(train_data)
+    print "Test  seqs:", len(test_data)
+
     train_feats = [get_features(w, t) for w,t in tqdm(train_data)]
 
-    ft2ix, ix2ft, tag2ix, ix2tag, weights  = get_feature_map_and_weights(train_feats)
+    #ft2ix, ix2ft, tag2ix, ix2tag, weights  = get_feature_map_and_weights(train_feats)
+    word2ix, ix2word, tag2ix, ix2tag, wObs, wTags = get_words_tags_weights(train_feats)
 
-    # Preparing the test data.
-    test_data = load_files(test_files)
-
-    train_loop(train_data, ft2ix, tag2ix, ix2tag, weights)
+    ipdb.set_trace()
+    train_loop(train_data, word2ix, tag2ix, ix2tag, wObs, wTags, train_data)
 
 
 if __name__ == '__main__':
