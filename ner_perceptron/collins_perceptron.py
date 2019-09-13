@@ -176,6 +176,13 @@ first, I'll ditch Viterbi and implement a greedy approach -- should work well.
 I'll also unit-test the Viterbi module with sample data to see if it can decode
 the obvious sequences. 
 - Logging off.
+
+[20:57] - It's working baby!
+- Just fixed the Python version. There were two major changes that I did.
+1. Remove the dependency on None as a tag (None as word feature is never
+generated).
+2. Fix the Viterbi return. For some reason it was returning the list in reverse.
+- Will update the Cython code soon and get REAL metrics.
 """
 
 
@@ -284,17 +291,17 @@ def get_words_tags_weights(list_of_seq_feats):
 
     for seq_feats in tqdm(list_of_seq_feats):
         for (prevt, word), tag in seq_feats:
-            if prevt not in tag2ix:
+            if (prevt not in tag2ix) and (prevt is not None):
                 tag2ix[prevt] = t
                 ix2tag.append(prevt)
                 t += 1
 
-            if tag not in tag2ix:
+            if (tag not in tag2ix) and (tag is not None):
                 tag2ix[tag] = t
                 ix2tag.append(tag)
                 t += 1
 
-            if word not in word2ix:
+            if (word not in word2ix) and (word is not None):
                 word2ix[word] = w
                 ix2word.append(word)
                 w += 1
@@ -392,7 +399,7 @@ def decode(words_ixs, num_tags, wObs, wTags):
         qt = psi[t][qt]
         decoding.append(qt)
 
-    return decoding
+    return decoding[::-1]
 
 
 # @timeit
@@ -406,6 +413,7 @@ def forward(wdseq, tgseq, word2ix, ix2tag, wObs, wTags):
     deixs = decode(wdixs, len(ix2tag), wObs, wTags)
     deseq = [ix2tag[i] for i in deixs]
 
+    #ipdb.set_trace()
     # Extract features from truth and pred pairs.
     gold_feats = get_features(wdseq, tgseq)
     pred_feats = get_features(wdseq, deseq)
@@ -414,6 +422,8 @@ def forward(wdseq, tgseq, word2ix, ix2tag, wObs, wTags):
 
 
 def train_step(gold_feats, pred_feats, word2ix, tag2ix):
+    #ipdb.set_trace()
+
     obs_pos = defaultdict(int)
     tag_pos = defaultdict(int)
 
@@ -421,6 +431,9 @@ def train_step(gold_feats, pred_feats, word2ix, tag2ix):
         c = tag2ix[tag]
         w = word2ix[word]
         obs_pos[(w, c)] += 1
+
+        if prevt is None:
+            continue
 
         t = tag2ix[prevt]
         tag_pos[(t, c)] += 1
@@ -431,9 +444,13 @@ def train_step(gold_feats, pred_feats, word2ix, tag2ix):
         w = word2ix[word]
         obs_pos[(w, c)] += -1
 
+        if prevt is None:
+            continue
+
         t = tag2ix[prevt]
         tag_pos[(t, c)] += -1
 
+    #ipdb.set_trace()
     return obs_pos, tag_pos
 
 
@@ -454,7 +471,7 @@ def train_loop(train_data, word2ix, tag2ix, ix2tag, _iwObs, _iwTags, test_data):
     counter = 0
     for wdseq, tgseq in tqdm(train_data):
         counter += 1
-        if counter % 30 == 0:
+        if counter % 50 == 0:
             test_acc, test_total = 0, 0
             for te_wd, te_tg in tqdm(test_data):
                 _g, _p = forward(te_wd, te_tg, word2ix, ix2tag, wObs, wTags)
@@ -465,6 +482,7 @@ def train_loop(train_data, word2ix, tag2ix, ix2tag, _iwObs, _iwTags, test_data):
             tqdm.write("Completed %d samples. Accuracy: %f"%\
                         (counter, test_acc*1.0/test_total))
 
+        #ipdb.set_trace()
         tr_gold, tr_pred = forward(wdseq, tgseq, word2ix, ix2tag, wObs, wTags)
         obs_pos, tag_pos = train_step(tr_gold, tr_pred, word2ix, tag2ix)
 
@@ -475,6 +493,9 @@ def train_loop(train_data, word2ix, tag2ix, ix2tag, _iwObs, _iwTags, test_data):
         for (r, c), v in tag_pos.items():
             if v != 0:
                 wTags[r, c] += v
+
+
+    #ipdb.set_trace()
 
     return wObs, wTags
 
@@ -495,21 +516,27 @@ def main(path_brown_corpus):
     files = [os.path.join(path_brown_corpus, name) for name in 
              os.listdir(path_brown_corpus) if len(name) == 4 and name[0] == 'c']
 
-    data = load_files(files[:1])
+    data = load_files(files[:5])
     random.shuffle(data)
 
-    tsplit = int(0.4 * len(data))
+    tsplit = int(0.9 * len(data))
     train_data, test_data = data[:tsplit], data[tsplit:]
     print "Train seqs:", len(train_data)
     print "Test  seqs:", len(test_data)
 
+    #wdseq = ['hello', 'my', 'name', 'is', 'priyam', 'and', 'his', 'name', 'is', 'trivium']
+    #tgseq = ['UH', 'PRP', 'NN', 'VBZ', 'NNP', 'CC', 'PRP', 'NN', 'VBZ', 'NNP']
+    #assert len(wdseq) == len(tgseq)
+    #print zip(wdseq, tgseq)
+
+    #train_data = [(wdseq, tgseq)]
     train_feats = [get_features(w, t) for w,t in tqdm(train_data)]
 
     #ft2ix, ix2ft, tag2ix, ix2tag, weights  = get_feature_map_and_weights(train_feats)
     word2ix, ix2word, tag2ix, ix2tag, wObs, wTags = get_words_tags_weights(train_feats)
 
-    ipdb.set_trace()
-    train_loop(train_data, word2ix, tag2ix, ix2tag, wObs, wTags, train_data)
+    #ipdb.set_trace()
+    train_loop(train_data, word2ix, tag2ix, ix2tag, wObs, wTags, test_data)
 
 
 if __name__ == '__main__':
