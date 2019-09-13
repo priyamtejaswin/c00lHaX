@@ -24,9 +24,9 @@ for a, b in zip(cy_out, py_out):
     assert a == b, "Cython out != Python out."
 
 times = timeit.Timer(partial(decode, word_ixs, num_tags, wObs, wTags)).repeat(3, 100)
-print "vanilla:", min(times)/100.0
+print "vanilla:", min(times)/100.0, "secs"
 times = timeit.Timer(partial(viterbi.decode, word_ixs, num_tags, wObs, wTags)).repeat(3, 100)
-print " cython:", min(times)/100.0
+print " cython:", min(times)/100.0, "secs"
 
 
 if __name__ == '__main__':
