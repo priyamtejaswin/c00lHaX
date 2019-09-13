@@ -26,7 +26,9 @@ def reply(int[:] nums):
 
 @cython.boundscheck(False) # turn off bounds-checking for entire function
 @cython.wraparound(False)
-def decode(int[:] words_ixs, int num_tags, np.ndarray[INT_DTYPE_t, ndim=2] weights):
+def decode(int[:] words_ixs, int num_tags,
+           np.ndarray[INT_DTYPE_t, ndim=2] wObs,
+           np.ndarray[INT_DTYPE_t, ndim=2] wTags):
     # `word_ixs` is the indices of the word, already mapped.
     # `-1` means OOV.
     cdef int size = len(words_ixs)
@@ -54,7 +56,7 @@ def decode(int[:] words_ixs, int num_tags, np.ndarray[INT_DTYPE_t, ndim=2] weigh
                 continue
 
             for tix in list_num_tags:
-                delta[t, tix] = weights[wix, tix]
+                delta[t, tix] = wObs[wix, tix]
 
             #_d = [weights[wix, tix] for tix in list_num_tags]
             #_p = np.zeros(num_tags, dtype=int).tolist()
@@ -67,9 +69,9 @@ def decode(int[:] words_ixs, int num_tags, np.ndarray[INT_DTYPE_t, ndim=2] weigh
             #_d, _p = [], []
             for curr in list_num_tags:  # `curr` represents the current tag.
                 for prev in list_num_tags:
-                    temp[prev] = delta[t-1, prev] + weights[prev, curr]
+                    temp[prev] = delta[t-1, prev] + wTags[prev, curr]
                     if wix != -1:
-                        temp[prev] += weights[wix, curr]
+                        temp[prev] += wObs[wix, curr]
 
                 delta[t, curr] = np.max(temp)
                 psi[t, curr] = np.argmax(temp)

@@ -15,14 +15,17 @@ from collins_perceptron import decode
 
 word_ixs = array.array('i', range(10))
 num_tags = 50
-weights = np.random.randint(10, size=(500, num_tags), dtype=int)
+wObs = np.random.randint(10, size=(500, num_tags), dtype=int)
+wTags = np.random.randint(10, size=(num_tags, num_tags), dtype=int)
 
-print viterbi.decode(word_ixs, num_tags, weights)
-print decode(word_ixs, num_tags, weights)[::-1]
+cy_out = viterbi.decode(word_ixs, num_tags, wObs, wTags)
+py_out = decode(word_ixs, num_tags, wObs, wTags)
+for a, b in zip(cy_out, py_out):
+    assert a == b, "Cython out != Python out."
 
-times = timeit.Timer(partial(decode, word_ixs, num_tags, weights)).repeat(3, 100)
+times = timeit.Timer(partial(decode, word_ixs, num_tags, wObs, wTags)).repeat(3, 100)
 print "vanilla:", min(times)/100.0
-times = timeit.Timer(partial(viterbi.decode, word_ixs, num_tags, weights)).repeat(3, 100)
+times = timeit.Timer(partial(viterbi.decode, word_ixs, num_tags, wObs, wTags)).repeat(3, 100)
 print " cython:", min(times)/100.0
 
 
