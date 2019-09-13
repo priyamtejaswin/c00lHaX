@@ -410,7 +410,7 @@ def forward(wdseq, tgseq, word2ix, ix2tag, wObs, wTags):
     # `wdixs` -- word indices.
     wdixs = [word2ix.get(w, -1) for w in wdseq]
     wdixs = array.array('i', wdixs)
-    deixs = decode(wdixs, len(ix2tag), wObs, wTags)
+    deixs = viterbi.decode(wdixs, len(ix2tag), wObs, wTags)
     deseq = [ix2tag[i] for i in deixs]
 
     #ipdb.set_trace()
@@ -469,33 +469,34 @@ def train_loop(train_data, word2ix, tag2ix, ix2tag, _iwObs, _iwTags, test_data):
     wObs, wTags = np.copy(_iwObs), np.copy(_iwTags)
 
     counter = 0
-    for wdseq, tgseq in tqdm(train_data):
-        counter += 1
-        if counter % 50 == 0:
-            test_acc, test_total = 0, 0
-            for te_wd, te_tg in tqdm(test_data):
-                _g, _p = forward(te_wd, te_tg, word2ix, ix2tag, wObs, wTags)
-                acc, tot = test_step(_g, _p)
-                test_acc += acc
-                test_total += tot
+    for outer in range(5):
+        for wdseq, tgseq in tqdm(train_data):
+            counter += 1
+            if counter % 500 == 0:
+                test_acc, test_total = 0, 0
+                for te_wd, te_tg in tqdm(test_data):
+                    _g, _p = forward(te_wd, te_tg, word2ix, ix2tag, wObs, wTags)
+                    acc, tot = test_step(_g, _p)
+                    test_acc += acc
+                    test_total += tot
 
-            tqdm.write("Completed %d samples. Accuracy: %f"%\
-                        (counter, test_acc*1.0/test_total))
+                tqdm.write("Completed %d samples. Accuracy: %f"%\
+                            (counter, test_acc*1.0/test_total))
+
+            #ipdb.set_trace()
+            tr_gold, tr_pred = forward(wdseq, tgseq, word2ix, ix2tag, wObs, wTags)
+            obs_pos, tag_pos = train_step(tr_gold, tr_pred, word2ix, tag2ix)
+
+            for (r, c), v in obs_pos.items():
+                if v != 0:
+                    wObs[r, c] += v
+
+            for (r, c), v in tag_pos.items():
+                if v != 0:
+                    wTags[r, c] += v
+
 
         #ipdb.set_trace()
-        tr_gold, tr_pred = forward(wdseq, tgseq, word2ix, ix2tag, wObs, wTags)
-        obs_pos, tag_pos = train_step(tr_gold, tr_pred, word2ix, tag2ix)
-
-        for (r, c), v in obs_pos.items():
-            if v != 0:
-                wObs[r, c] += v
-
-        for (r, c), v in tag_pos.items():
-            if v != 0:
-                wTags[r, c] += v
-
-
-    #ipdb.set_trace()
 
     return wObs, wTags
 
@@ -516,7 +517,7 @@ def main(path_brown_corpus):
     files = [os.path.join(path_brown_corpus, name) for name in 
              os.listdir(path_brown_corpus) if len(name) == 4 and name[0] == 'c']
 
-    data = load_files(files[:5])
+    data = load_files(files[:50])
     random.shuffle(data)
 
     tsplit = int(0.9 * len(data))
