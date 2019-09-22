@@ -17,3 +17,11 @@ Usage:
 - `make run` will launch the tagger script.
 - `make clean` will delete all .pyc and .so files.
 
+Dependencies (beyond the Python standard libraries):
+```
+plac==0.9.6
+tqdm==4.23.4
+ipdb==0.10.3
+numpy==1.16.2
+Cython==0.27.3
+``` 
