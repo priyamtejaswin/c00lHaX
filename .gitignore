@@ -14,3 +14,5 @@ ner_perceptron/*.c
 ner_perceptron/build
 *.pyc
 *.so
+fast_corner/box.tar
+fast_corner/box
