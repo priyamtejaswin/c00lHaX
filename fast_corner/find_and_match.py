@@ -113,10 +113,27 @@ def main(left, right):
     kps1, corners1 = get_fast_corners(i1)
     plt.figure(figsize=(10, 10))
     plt.imshow(corners1)
+    plt.show()
 
     kps2, corners2 = get_fast_corners(i2)
     plt.figure(figsize=(10, 10))
     plt.imshow(corners2)
+    plt.show()
+
+    bdescr1 = get_brief_descriptors(i1, kps1, zip(p1, p2))
+    bdescr2 = get_brief_descriptors(i2, kps2, zip(p1, p2))
+
+    # Plot matching descriptors.
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10))
+
+    ax1.imshow(corners1)
+    ax2.imshow(corners2)
+
+    for one, two in matcher(bdescr1, bdescr2, threshold=0.82):
+        conpatch = patches.ConnectionPatch(xyA=two, xyB=one, coordsA="data", coordsB="data", color='green',
+                                          axesA=ax2, axesB=ax1)
+        ax2.add_artist(conpatch)
+    plt.show()
 
 
 if __name__ == '__main__':
