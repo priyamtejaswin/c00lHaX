@@ -46,5 +46,4 @@ Here's a list of ***things*** i've covered so far:
 **More corner detection**
 - Implemented the [Harris Corner Detector](http://www.bmva.org/bmvc/1988/avc-88-023.pdf). Used in ORB.
 - I made more of an effort in writing the notebook this time around -- `./harris_corner/harris_1988.ipynb`.
-- There was a problem at work for quickly detecting barcodes. I put together something using low-level filters and `cv2` `Contour` functionality in about an hour -- `./harris_corner/barcode_corners.ipynb`. This is as hacky as it gets folks. Well, not as hacky as this ...
-[Hackers 1995, "Hack The Gibson"](https://www.youtube.com/watch?v=Bmz67ErIRa4)
+- There was a problem at work for quickly detecting barcodes. I put together something using low-level filters and `cv2` `Contour` functionality in about an hour -- `./harris_corner/barcode_corners.ipynb`. This is as hacky as it gets folks. Well, not as hacky as [this ...](https://www.youtube.com/watch?v=Bmz67ErIRa4)
