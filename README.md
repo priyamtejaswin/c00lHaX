@@ -47,3 +47,6 @@ Here's a list of ***things*** i've covered so far:
 - Implemented the [Harris Corner Detector](http://www.bmva.org/bmvc/1988/avc-88-023.pdf). Used in ORB.
 - I made more of an effort in writing the notebook this time around -- `./harris_corner/harris_1988.ipynb`.
 - There was a problem at work for quickly detecting barcodes. I put together something using low-level filters and `cv2` `Contour` functionality in about an hour -- `./harris_corner/barcode_corners.ipynb`. This is as hacky as it gets folks. Well, not as hacky as [this ...](https://www.youtube.com/watch?v=Bmz67ErIRa4)
+
+**Corner orientation**
+- A rather simple way to detect the orientation of a keypoint, as described in the ORB paper and implemented in `./harris_corner/keypoint_orientation.ipynb`. You compute the centroid of the image, and measure the angle from the X-axis to the centroid vector.
