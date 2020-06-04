@@ -155,8 +155,7 @@ def solve_homography(m, M):
         i += 3
 
     u, s, vh = np.linalg.svd(A)
-    return A
-
+    return vh[np.argmin(s)], A
 
 
 if __name__ == '__main__':
@@ -174,7 +173,7 @@ if __name__ == '__main__':
     m = [p for s in points[:1] for p in s]
     M = [(p[0], p[1], 1) for s in reals[:1] for p in s]
 
-    A = solve_homography(m, M)  # Toy data ...
+    _, A = solve_homography(m, M)  # Toy data ...
     assert np.allclose(A[0], [0, 0, 0,
                             0, -40, -1,
                             0, 405.5767*40, 405.5767], rtol=1e-5, atol=1e-5)
@@ -195,9 +194,13 @@ if __name__ == '__main__':
     m = [p for s in all_points for p in s]
     print "total points:", len(m)
 
-    all_reals = gen_realworld_points(17, 8, 8) * len(point_paths)
+    all_reals = gen_realworld_points(1, 8, 8) * len(point_paths)
     M = [(p[0], p[1], 1) for s in all_reals for p in s]
     print "total reals:", len(M)
     assert len(m) == len(M)
 
-    print solve_homography(m, M).shape
+    hvec, A = solve_homography(m, M)
+    print hvec
+    print A.shape
+
+    hmat = hvec.reshape(3, 3)
