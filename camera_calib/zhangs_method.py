@@ -44,7 +44,16 @@ Z will be 0 with the planar assumption.
 We have corresponding real-world points.
 
 3. Init function to generate parameter placeholders.
+[11:45 PM] Added the Homography solver.
 
+4. Intrinsic solver.
+Input is the homography matrix.
+Exploits the rotation matrix orthonormal constraints.
+[5th June, 12:51 AM] Worked out the Intrinsic parameter solution.
+It's another linear-system transformation. Check the end of the notes;
+will complete this tomorrow morning.
+
+[12:52 AM] Peace out.
 """
 
 
