@@ -163,12 +163,79 @@ def solve_homography(m, M):
 
         i += 3
 
+    assert A.shape == (3*len(m), 9)
     u, s, vh = np.linalg.svd(A)
     return vh[np.argmin(s)], A
 
 
+def solve_intrinsics(hmats):
+    """
+    Given homography matrices (3 x 3), determine intrinsics.
+    ```
+    v{i}{j} = [ h{i}[0]*h{j}[0],
+            h{i}[0]*h{j}[1] + h{i}[1]*h{j}[0],
+            h{i}[1]*h{j}[1],
+            h{i}[2]*h{j}[0] + h{i}[0]*h{j}[2],
+            h{i}[2]*h{j}[1] + h{i}[1]*h{j}[2],
+            h{i}[2]*h{j}[2]]
+    ```
+    """
+    capV = []
+
+    for homography in hmats:
+        # Column vectors
+        h1, h2 = homography[:, 0], homography[:, 1]
+
+        v12 = [ h1[0]*h2[0],
+            h1[0]*h2[1] + h1[1]*h2[0],
+            h1[1]*h2[1],
+            h1[2]*h2[0] + h1[0]*h2[2],
+            h1[2]*h2[1] + h1[1]*h2[2],
+            h1[2]*h2[2]]
+
+        v11 = [ h1[0]*h1[0],
+            h1[0]*h1[1] + h1[1]*h1[0],
+            h1[1]*h1[1],
+            h1[2]*h1[0] + h1[0]*h1[2],
+            h1[2]*h1[1] + h1[1]*h1[2],
+            h1[2]*h1[2]]
+
+        v22 = [ h2[0]*h2[0],
+            h2[0]*h2[1] + h2[1]*h2[0],
+            h2[1]*h2[1],
+            h2[2]*h2[0] + h2[0]*h2[2],
+            h2[2]*h2[1] + h2[1]*h2[2],
+            h2[2]*h2[2]]
+
+        vmat = np.vstack([np.array(v12), np.array(v11) - np.array(v22)])
+        capV.append(vmat)
+        print vmat.shape
+
+    capV = np.vstack(capV) 
+
+    assert capV.shape == (2*len(hmats), 6)
+    u, s, vh = np.linalg.svd(capV)
+    bvec = vh[np.argmin(s)]
+
+    b11, b12, b22, b13, b23, b33 = bvec.tolist()
+
+    v0 = (b12*b13 - b11*b23) / (b11*b22 - b12**2)
+    clam = b33 - (b13**2 + v0*(b12*b13 - b11*b23))/b11
+    alpha = np.sqrt(clam/b11)
+    beta = np.sqrt(clam*b11 / (b11*b22 - b12**2))
+    gamma = -1 * b12 * alpha**2 * beta / clam
+    u0 = gamma*v0/beta - b13 * alpha**2 / clam
+
+    return np.array([
+        [alpha, gamma, u0],
+        [0, beta, v0],
+        [0, 0, 1]
+    ])
+
+
+
 if __name__ == '__main__':
-    np.set_printoptions(precision=3)
+    np.set_printoptions(precision=3, suppress=True)
 
     img = cv2.imread('/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/camera_calib/data/zhang_data/CalibIm1.tif', -1)
     points = load_points('/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/camera_calib/data/zhang_data/data1.txt')
@@ -193,23 +260,34 @@ if __name__ == '__main__':
                             0, 63.4392*40, 63.4392,
                             0, 0,  0], rtol=1e-5, atol=1e-5)
 
-    root_path = '/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/camera_calib/data/zhang_data'
-    point_paths = [os.path.join(root_path, 'data%d.txt'%i) for i in range(1, 6)]
+    root_path = '/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/camera_calib/data/msr_data'
+    point_paths = [os.path.join(root_path, 'ip_%d.txt'%i) for i in range(1, 6)]
+
     all_points = []
     for f in point_paths:
-        all_points.extend(load_points(f))
+        array = load_points(f)
+        all_points.append([p for s in array for p in s])
 
-    print "total squares:", len(all_points)
-    m = [p for s in all_points for p in s]
-    print "total points:", len(m)
+    print "total images:", len(all_points)
+    print "total points:", sum(len(a) for a in all_points)
 
-    all_reals = gen_realworld_points(1, 8, 8) * len(point_paths)
+    all_reals = gen_realworld_points(1, 8, 8)
     M = [(p[0], p[1], 1) for s in all_reals for p in s]
     print "total reals:", len(M)
-    assert len(m) == len(M)
+    assert len(all_points[0]) == len(M)
 
-    hvec, A = solve_homography(m, M)
+    hvec, A = solve_homography(all_points[0], M)
     print hvec
     print A.shape
 
-    hmat = hvec.reshape(3, 3)
+    homographies = []
+    for m in all_points:
+        hvec, A = solve_homography(m, M)
+        print hvec.reshape(3, 3)
+        homographies.append(hvec.reshape(3, 3))
+
+    intrinsic_mat = solve_intrinsics(homographies)
+    print intrinsic_mat
+
+
+    
