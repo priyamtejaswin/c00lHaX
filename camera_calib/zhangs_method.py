@@ -82,6 +82,20 @@ I tried checking OpenCV, but it only supports a very specific type of calibratio
 using the chesssboard. 
 
 Finally figured out what the `Model.txt` file is for -- it contains the IRW data.
+
+[5:19 PM] It's working now.
+Had to use the coordinates they had generated.
+
+[6:15 PM] Can't figure out why this data (`Model.txt`) is special.
+I was right about the origin being on top left, except the points are reversed in order
+-- my first point starts from the bottom, their's starts from the top.
+The diff b/w points is 0.5 -- again, this is why I was seeing close numbers for `size=1`.
+The mean/std of the data is not meaningful -- for now I believe that the distance doesn't really
+matter, unless you are replicating/recreating someone's results.
+
+[7:44 PM] Including radial distortion.
+The paper says the alternating optimisation takes a while to converge.
+I'm trying the full least-squares version here.
 """
 
 
@@ -326,6 +340,32 @@ def normalise_points(points):
     return normed.tolist()
 
 
+def projection(params, pixels, M, n):
+    """
+    Compute reprojection error across all pixels, IRW points M and the unknown parameters.
+    `params` format:
+    [a, g, b, u0, v0] + [k1, k2] + R.flatten() + t.flatten()
+    """
+    assert len(params) == 0
+
+    A = np.zeros((3, 3))
+    A[0, 0], A[0, 1] = params[0], params[1]
+    A[1, 1] = params[2]
+    A[0, 2], A[1, 2] = params[3], params[4]
+    A[2, 2] = 1.0
+
+    k1, k2 = params[5], params[6]
+
+    img_rotations = []
+    img_translations = []
+
+    i = 7
+    for _ in range(n):
+        R = np.array(params[7:16]).reshape(3, 3)
+        t = np.array(params[16:19])
+
+
+
 
 if __name__ == '__main__':
     np.set_printoptions(precision=3, suppress=True)
@@ -383,11 +423,16 @@ if __name__ == '__main__':
         zhang_homogs.append(zvec.reshape(3, 3))
 
     intrinsic_mat = solve_intrinsics(homographies)
-    print intrinsic_mat
+    print round(intrinsic_mat[0, 0], 5), round(intrinsic_mat[0, 1], 5), round(intrinsic_mat[1, 1], 5),\
+            round(intrinsic_mat[0, 2], 5), round(intrinsic_mat[1, 2], 5)
+    print
 
     zinst_mat = solve_intrinsics(zhang_homogs)
 
     for H in homographies:
-        print solve_extrinsics(zinst_mat, H)
+        r, t = solve_extrinsics(intrinsic_mat, H)
+        for row in np.vstack([r, t]):
+            print ' '.join(map(lambda x:str(round(x, 5)), [_ for _ in row]))
         print
+
     
