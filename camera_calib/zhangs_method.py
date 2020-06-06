@@ -72,6 +72,16 @@ And the answer is:
  [  0.    832.53  206.585]
  [  0.      0.      1.   ]]
 ```
+
+[6th June, 4:46 PM] Extrinsics do not match.
+I have doubts about the scale/size of the real-world coordinates.
+My guess is that the intrinsics shuold not change -- the extrinsics should adapt.
+So my guess is I have not initialised the IRW points correctly.
+
+I tried checking OpenCV, but it only supports a very specific type of calibration,
+using the chesssboard. 
+
+Finally figured out what the `Model.txt` file is for -- it contains the IRW data.
 """
 
 
@@ -354,7 +364,8 @@ if __name__ == '__main__':
     print "total images:", len(all_points)
     print "total points:", sum(len(a) for a in all_points)
 
-    all_reals = gen_realworld_points(17, 8, 8)
+    # all_reals = gen_realworld_points(17, 8, 8)
+    all_reals = load_points('/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/camera_calib/data/zhang_data/Model.txt')
     M = [(p[0], p[1], 1) for s in all_reals for p in s]
     print "total reals:", len(M)
     assert len(all_points[0]) == len(M)
