@@ -96,6 +96,17 @@ matter, unless you are replicating/recreating someone's results.
 [7:44 PM] Including radial distortion.
 The paper says the alternating optimisation takes a while to converge.
 I'm trying the full least-squares version here.
+
+[7th June, 12:15 AM] Spent the rest of the day figuring out Scipy Optimise
+and understanding how to model Radial Distortion.
+I got the optimiser to work. But it's not working ...
+
+If I give an initial solution with `k1, k2 = 0, 0` the algorthim just returns
+the initial solution. Any value slightly higher than 0 gives wild results.
+I'm going to guess that my distortion calculation is wrong.
+
+The Zhang MSR paper is not particularly insightful -- I'll try reading the
+ICCV paper that was published first.
 """
 
 
@@ -340,13 +351,18 @@ def normalise_points(points):
     return normed.tolist()
 
 
-def projection(params, pixels, M, n):
+def projection(params, pixels, M, num_images, num_points):
     """
     Compute reprojection error across all pixels, IRW points M and the unknown parameters.
     `params` format:
     [a, g, b, u0, v0] + [k1, k2] + R.flatten() + t.flatten()
+
+    `num_images` is total images in data.
+    `num_points` is number of points in every image.
     """
-    assert len(params) == 0
+    assert len(params) == 7 + 12*num_images
+    assert len(pixels) == num_images*num_points
+    assert len(M) == num_points
 
     A = np.zeros((3, 3))
     A[0, 0], A[0, 1] = params[0], params[1]
@@ -354,17 +370,50 @@ def projection(params, pixels, M, n):
     A[0, 2], A[1, 2] = params[3], params[4]
     A[2, 2] = 1.0
 
+    u0, v0 = A[0, 2], A[1, 2]
     k1, k2 = params[5], params[6]
 
     img_rotations = []
     img_translations = []
 
     i = 7
-    for _ in range(n):
-        R = np.array(params[7:16]).reshape(3, 3)
-        t = np.array(params[16:19])
+    for _ in range(num_images):
+        R = np.array(params[i:i+9]).reshape(3, 3)
+        img_rotations.append(R)
 
+        t = np.array(params[i+9:i+12])
+        img_translations.append(t)
 
+        i += 12
+
+    residual = []
+    for i in range(num_images):
+        m = np.array(pixels[i*num_points : (i+1)*num_points])
+        R = img_rotations[i]
+        t = img_translations[i]
+
+        r1, r2 = R[:, 0], R[:, 1]
+        E = np.vstack([r1, r2, t]).T
+
+        clean = np.dot(A, np.dot(E, M.T)).T
+        # 3x3 . 3x3 . 3xN ==> 3xN ==> Nx3
+
+        for j in range(num_points):
+            truth = m[j]
+            undis = clean[j]
+            u, v = undis[0]/undis[2], undis[1]/undis[2]
+
+            radial = np.sqrt((u - u0)**2 + (v - v0)**2)
+            rconst = k1*(radial**2) + k2*(radial**4)
+            # Compute projected points with distortion.
+            du = (u + u0*rconst)/(1 + rconst)
+            dv = (v + v0*rconst)/(1 + rconst)
+
+            # Check the Scipy Optimise + LM method function...
+            error = np.linalg.norm([truth[0] - du, truth[1] - dv])
+            residual.append(error)
+
+    return np.array(residual)
 
 
 if __name__ == '__main__':
@@ -429,10 +478,41 @@ if __name__ == '__main__':
 
     zinst_mat = solve_intrinsics(zhang_homogs)
 
+    #[a, g, b, u0, v0] + [k1, k2] + R.flatten() + t.flatten() 
+    params = [intrinsic_mat[0, 0], intrinsic_mat[0, 1], intrinsic_mat[1, 1]]
+    params += [intrinsic_mat[0, 2], intrinsic_mat[1, 2]]  # u0, v0
+    params += [0.1, 0.1]  # Distortion k1, k2
+    lower_b = [-np.inf] * len(params)
+    upper_b = [np.inf] * len(lower_b)
     for H in homographies:
         r, t = solve_extrinsics(intrinsic_mat, H)
+        params += r.flatten().tolist()
+        params += t.tolist()
+
+        lower_b += [-1.0] * 9
+        upper_b += [1.0] * 9
+
+        lower_b += [-np.inf] * 3
+        upper_b += [np.inf] * 3
+
         for row in np.vstack([r, t]):
             print ' '.join(map(lambda x:str(round(x, 5)), [_ for _ in row]))
         print
+
+    assert len(params) == 7 + 12*len(point_paths)
+    assert len(params) == len(lower_b) == len(upper_b)
+
+    pixels = [p for l in all_points for p in l]
+    print "initial error:", projection(np.array(params), np.array(pixels), np.array(M),
+                                        num_images=len(point_paths), num_points=len(M))
+
+    import scipy.optimize
+    print scipy.optimize.least_squares(
+        fun=projection, x0=np.array(params), 
+        args=(np.array(pixels), np.array(M), len(point_paths), len(M)),
+        # bounds=(lower_b, upper_b),
+        method='lm'
+    )
+    print np.array(params)
 
     
