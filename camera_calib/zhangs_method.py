@@ -54,6 +54,24 @@ It's another linear-system transformation. Check the end of the notes;
 will complete this tomorrow morning.
 
 [12:52 AM] Peace out.
+
+[3:30 PM] Success! Intrinsic solver values close to answer.
+Diff because:
+* Radial distortion.
+* This is the first closed form solution -- optimisation procedure is pending.
+
+Current matrix is:
+```
+[[888.129   0.359 278.366]
+ [  0.    885.091 197.62 ]
+ [  0.      0.      1.   ]]
+```
+And the answer is:
+```
+[[832.5    0.204  303.959]
+ [  0.    832.53  206.585]
+ [  0.      0.      1.   ]]
+```
 """
 
 
@@ -62,6 +80,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from itertools import izip
+from sklearn.preprocessing import StandardScaler
 
 
 def load_points(path):
@@ -163,9 +182,46 @@ def solve_homography(m, M):
 
         i += 3
 
+    assert i == 3*len(m)
     assert A.shape == (3*len(m), 9)
     u, s, vh = np.linalg.svd(A)
     return vh[np.argmin(s)], A
+
+
+def zhang_homography(m, M):
+    """
+    Following the method in Appendix A.
+    """
+    assert len(m) == len(M), 'Number of points is not the same.'
+
+    assert isinstance(m[0], list) or isinstance(m[0], tuple), '`m` should be list of 2d points.'
+    assert len(m[0]) == 2, '`m` should be list of 2d points.'
+
+    assert isinstance(M[0], list) or isinstance(M[0], tuple), '`M` should be list of 3d points.'
+    assert len(M[0]) == 3, '`M` should be list of 3d points.'
+
+    A = np.zeros((2 * len(m), 9))
+
+    i = 0
+    for image, world in izip(m, M):
+        x, y = image
+        vec = np.array(world)
+        
+        A[i, 0:3] = vec
+        A[i, 3:6] = 0
+        A[i, 6:9] = -1 * x * vec
+
+        A[i+1, 0:3] = 0
+        A[i+1, 3:6] = vec
+        A[i+1, 6:9] = -1 * y * vec
+
+        i += 2
+
+    assert i == 2*len(m)
+    assert A.shape == (2*len(m), 9)
+    u, s, vh = np.linalg.svd(A)
+    return vh[np.argmin(s)], A
+
 
 
 def solve_intrinsics(hmats):
@@ -209,7 +265,6 @@ def solve_intrinsics(hmats):
 
         vmat = np.vstack([np.array(v12), np.array(v11) - np.array(v22)])
         capV.append(vmat)
-        print vmat.shape
 
     capV = np.vstack(capV) 
 
@@ -231,6 +286,34 @@ def solve_intrinsics(hmats):
         [0, beta, v0],
         [0, 0, 1]
     ])
+
+
+def solve_extrinsics(A, H):
+    """
+    Compute Extrinsic matrix (R, t) for every homography/image.
+    Last step following Appendix C.
+    """
+    h1, h2, h3 = H[:, 0], H[:, 1], H[:, 2]
+    invA = np.linalg.inv(A)
+    clam = 1.0 / np.linalg.norm(np.dot(invA, h1))
+
+    r1 = clam * np.dot(invA, h1)
+    r2 = clam * np.dot(invA, h2)
+    r3 = np.cross(r1, r2)
+    t = clam * np.dot(invA, h3)
+
+    Q = np.vstack([r1, r2, r3]).T
+    u, s, vh = np.linalg.svd(Q)
+    R = np.dot(u, vh)
+
+    return R, t
+
+
+def normalise_points(points):
+    data = np.array(points)
+    std = StandardScaler()
+    normed = std.fit_transform(data)
+    return normed.tolist()
 
 
 
@@ -260,8 +343,8 @@ if __name__ == '__main__':
                             0, 63.4392*40, 63.4392,
                             0, 0,  0], rtol=1e-5, atol=1e-5)
 
-    root_path = '/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/camera_calib/data/msr_data'
-    point_paths = [os.path.join(root_path, 'ip_%d.txt'%i) for i in range(1, 6)]
+    root_path = '/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/camera_calib/data/zhang_data'
+    point_paths = [os.path.join(root_path, 'data%d.txt'%i) for i in range(1, 6)]
 
     all_points = []
     for f in point_paths:
@@ -271,23 +354,29 @@ if __name__ == '__main__':
     print "total images:", len(all_points)
     print "total points:", sum(len(a) for a in all_points)
 
-    all_reals = gen_realworld_points(1, 8, 8)
+    all_reals = gen_realworld_points(17, 8, 8)
     M = [(p[0], p[1], 1) for s in all_reals for p in s]
     print "total reals:", len(M)
     assert len(all_points[0]) == len(M)
 
     hvec, A = solve_homography(all_points[0], M)
-    print hvec
-    print A.shape
 
     homographies = []
+    zhang_homogs = []
+
     for m in all_points:
         hvec, A = solve_homography(m, M)
-        print hvec.reshape(3, 3)
         homographies.append(hvec.reshape(3, 3))
+
+        zvec, _ = zhang_homography(m, M)
+        zhang_homogs.append(zvec.reshape(3, 3))
 
     intrinsic_mat = solve_intrinsics(homographies)
     print intrinsic_mat
 
+    zinst_mat = solve_intrinsics(zhang_homogs)
 
+    for H in homographies:
+        print solve_extrinsics(zinst_mat, H)
+        print
     
