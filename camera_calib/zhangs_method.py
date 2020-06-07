@@ -395,22 +395,17 @@ def projection(params, pixels, M, num_images, num_points):
         r1, r2 = R[:, 0], R[:, 1]
         E = np.vstack([r1, r2, t]).T
 
-        clean = np.dot(A, np.dot(E, M.T)).T
-        # 3x3 . 3x3 . 3xN ==> 3xN ==> Nx3
+        ideal = np.dot(E, M.T).T
 
         for j in range(num_points):
-            truth = m[j]
-            undis = clean[j]
-            u, v = undis[0]/undis[2], undis[1]/undis[2]
+            observed = m[j]
+            x, y = ideal[0]/ideal[2], ideal[1]/ideal[2]
+            rconst = k1*(x**2 + y**2) + k2*((x**2 + y**2)**2)
+            dx, dy = x + x*rconst, y + y*rconst
 
-            radial = np.sqrt((u - u0)**2 + (v - v0)**2)
-            rconst = k1*(radial**2) + k2*(radial**4)
-            # Compute projected points with distortion.
-            du = (u + u0*rconst)/(1 + rconst)
-            dv = (v + v0*rconst)/(1 + rconst)
+            pred = np.dot(A, np.array([dx, dy, 1.0]))
 
-            # Check the Scipy Optimise + LM method function...
-            error = np.linalg.norm([truth[0] - du, truth[1] - dv])
+            error = np.linalg.norm([observed[0]-pred[0], observed[1]-pred[1]])
             residual.append(error)
 
     return np.array(residual)
@@ -511,7 +506,7 @@ if __name__ == '__main__':
         fun=projection, x0=np.array(params), 
         args=(np.array(pixels), np.array(M), len(point_paths), len(M)),
         # bounds=(lower_b, upper_b),
-        method='lm'
+        method='lm', max_nfev=100000
     )
     print np.array(params)
 
