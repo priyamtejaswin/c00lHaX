@@ -503,13 +503,15 @@ if __name__ == '__main__':
         pred[:, 1] = proj[:, 1]/proj[:, 2]
 
         assert m.shape == pred.shape
-        print "mean error:", np.mean(np.linalg.norm(pred-m, axis=1))
+        _img_error = np.mean(np.linalg.norm(pred-m, axis=1))
+        print "mean error:", _img_error
 
         _rand_indices = np.random.randint(0, 256, 50)
         crosses = m[_rand_indices]
         plusses = pred[_rand_indices]
         plt.scatter([_[0] for _ in crosses], [_[1] for _ in crosses], label='truth', marker='x')
         plt.scatter([_[0] for _ in plusses], [_[1] for _ in plusses], label='preds', marker='+')
+        plt.title('Mean pixel deviation for image: %f'%round(_img_error, 2))
         plt.legend()
         plt.show()
 
