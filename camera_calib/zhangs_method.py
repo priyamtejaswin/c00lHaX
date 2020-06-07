@@ -107,12 +107,30 @@ I'm going to guess that my distortion calculation is wrong.
 
 The Zhang MSR paper is not particularly insightful -- I'll try reading the
 ICCV paper that was published first.
+
+[8th June, 2:00 AM] Some success...
+I've given up at modeling distortion at this point.
+Went back and figured out how to do the optimisation properly *without* k1,k2.
+The main issue with using an unbounded optimiser (LM in Minpack) was that the
+rotation matrix has to be orthonormal.
+The Rodrigues formula helps out with this.
+Instead of given the optimiser a matrix of vectors, you give it 3 angles.
+This is how rotation matrices are expressed in Euler form. Rodrigues formula
+converts this euler/angle vector to rotation matrix.
+
+Applying this only only the intrisic+extrinsic matrix (sans distortion) works.
+Avg drift was at around 1.044
+This reduced to 0.938, and the params were closer to the true values.
+
+With this `breakthrough`, I'll try the distortion model once again.
+Peace.
 """
 
 
 import os
 import cv2
 import numpy as np
+import scipy.optimize
 import matplotlib.pyplot as plt
 from itertools import izip
 from sklearn.preprocessing import StandardScaler
@@ -360,7 +378,7 @@ def projection(params, pixels, M, num_images, num_points):
     `num_images` is total images in data.
     `num_points` is number of points in every image.
     """
-    assert len(params) == 7 + 12*num_images
+    assert len(params) == 5 + 6*num_images
     assert len(pixels) == num_images*num_points
     assert len(M) == num_points
 
@@ -370,21 +388,23 @@ def projection(params, pixels, M, num_images, num_points):
     A[0, 2], A[1, 2] = params[3], params[4]
     A[2, 2] = 1.0
 
-    u0, v0 = A[0, 2], A[1, 2]
-    k1, k2 = params[5], params[6]
+    # u0, v0 = A[0, 2], A[1, 2]
+    # k1, k2 = params[5], params[6]
 
     img_rotations = []
     img_translations = []
 
-    i = 7
+    i = 5
     for _ in range(num_images):
-        R = np.array(params[i:i+9]).reshape(3, 3)
+        rodvec = np.array(params[i:i+3])
+        R = cv2.Rodrigues(rodvec)[0]
+        # R = np.array(params[i:i+9]).reshape(3, 3)
         img_rotations.append(R)
 
-        t = np.array(params[i+9:i+12])
+        t = np.array(params[i+3:i+6])
         img_translations.append(t)
 
-        i += 12
+        i += 6
 
     residual = []
     for i in range(num_images):
@@ -395,18 +415,27 @@ def projection(params, pixels, M, num_images, num_points):
         r1, r2 = R[:, 0], R[:, 1]
         E = np.vstack([r1, r2, t]).T
 
-        ideal = np.dot(E, M.T).T
+        ideal = np.dot(A, np.dot(E, M.T)).T
+        pred = np.zeros_like(m)
+        pred[:, 0] = ideal[:, 0] / ideal[:, 2]
+        pred[:, 1] = ideal[:, 1] / ideal[:, 2]
 
-        for j in range(num_points):
-            observed = m[j]
-            x, y = ideal[0]/ideal[2], ideal[1]/ideal[2]
-            rconst = k1*(x**2 + y**2) + k2*((x**2 + y**2)**2)
-            dx, dy = x + x*rconst, y + y*rconst
+        error = np.linalg.norm(pred-m, axis=1)
+        assert len(error) == len(m)
+        residual.extend(error.tolist())
 
-            pred = np.dot(A, np.array([dx, dy, 1.0]))
+        # for j in range(num_points):
+        #     observed = m[j]
+        #     clean = ideal[j]
 
-            error = np.linalg.norm([observed[0]-pred[0], observed[1]-pred[1]])
-            residual.append(error)
+        #     x, y = clean[0]/clean[2], clean[1]/clean[2]
+        #     rconst = k1*(x**2 + y**2) + k2*((x**2 + y**2)**2)
+
+        #     dx = x + (x - u0)*rconst
+        #     dy = y + (y - v0)*rconst
+
+        #     error = np.linalg.norm([observed[0]-clean[0], observed[1]-dy])
+        #     residual.append(error)
 
     return np.array(residual)
 
@@ -476,19 +505,13 @@ if __name__ == '__main__':
     #[a, g, b, u0, v0] + [k1, k2] + R.flatten() + t.flatten() 
     params = [intrinsic_mat[0, 0], intrinsic_mat[0, 1], intrinsic_mat[1, 1]]
     params += [intrinsic_mat[0, 2], intrinsic_mat[1, 2]]  # u0, v0
-    params += [0.0, 0.0]  # Distortion k1, k2
-    lower_b = [-np.inf] * len(params)
-    upper_b = [np.inf] * len(lower_b)
+    # params += [0.1, 0.1]  # Distortion k1, k2
     for ix, H in enumerate(homographies):
         r, t = solve_extrinsics(intrinsic_mat, H)
-        params += r.flatten().tolist()
+        rodvec = cv2.Rodrigues(r)[0]
+        # params += r.flatten().tolist()
+        params += rodvec.flatten().tolist()
         params += t.tolist()
-
-        lower_b += [-1.0] * 9
-        upper_b += [1.0] * 9
-
-        lower_b += [-np.inf] * 3
-        upper_b += [np.inf] * 3
 
         for row in np.vstack([r, t]):
             print ' '.join(map(lambda x:str(round(x, 5)), [_ for _ in row]))
@@ -516,20 +539,17 @@ if __name__ == '__main__':
         plt.show()
 
     # Trying the Optimizer ... Needs more work.
-    assert len(params) == 7 + 12*len(point_paths)
-    assert len(params) == len(lower_b) == len(upper_b)
+    assert len(params) == 5 + 6*len(point_paths)
 
     pixels = [p for l in all_points for p in l]
-    # print "initial error:", np.mean(projection(np.array(params), np.array(pixels), np.array(M),
-                                        # num_images=len(point_paths), num_points=len(M)))
+    print "initial error:", np.mean(projection(np.array(params), np.array(pixels), np.array(M),
+                                        num_images=len(point_paths), num_points=len(M)))
 
-    # import scipy.optimize
-    # print scipy.optimize.least_squares(
-    #     fun=projection, x0=np.array(params), 
-    #     args=(np.array(pixels), np.array(M), len(point_paths), len(M)),
-    #     # bounds=(lower_b, upper_b),
-    #     method='lm', max_nfev=100000
-    # )
-    # print np.array(params)
-
-    
+    print "Running optimiser ..."
+    opresult = scipy.optimize.least_squares(
+        fun=projection, x0=np.array(params), 
+        args=(np.array(pixels), np.array(M), len(point_paths), len(M)),
+        method='lm'
+    )
+    print "final error:", np.mean(projection(np.array(opresult.x), np.array(pixels), np.array(M),
+                                        num_images=len(point_paths), num_points=len(M)))
