@@ -476,10 +476,10 @@ if __name__ == '__main__':
     #[a, g, b, u0, v0] + [k1, k2] + R.flatten() + t.flatten() 
     params = [intrinsic_mat[0, 0], intrinsic_mat[0, 1], intrinsic_mat[1, 1]]
     params += [intrinsic_mat[0, 2], intrinsic_mat[1, 2]]  # u0, v0
-    params += [0.1, 0.1]  # Distortion k1, k2
+    params += [0.0, 0.0]  # Distortion k1, k2
     lower_b = [-np.inf] * len(params)
     upper_b = [np.inf] * len(lower_b)
-    for H in homographies:
+    for ix, H in enumerate(homographies):
         r, t = solve_extrinsics(intrinsic_mat, H)
         params += r.flatten().tolist()
         params += t.tolist()
@@ -494,20 +494,40 @@ if __name__ == '__main__':
             print ' '.join(map(lambda x:str(round(x, 5)), [_ for _ in row]))
         print
 
+        # Computing projection error.
+        m = np.array(all_points[ix])
+        rigid = np.vstack([r[:, 0], r[:, 1], t]).T
+        proj = np.dot(intrinsic_mat, np.dot(rigid, np.array(M).T)).T
+        pred = np.zeros((len(proj), 2))
+        pred[:, 0] = proj[:, 0]/proj[:, 2]
+        pred[:, 1] = proj[:, 1]/proj[:, 2]
+
+        assert m.shape == pred.shape
+        print "mean error:", np.mean(np.linalg.norm(pred-m, axis=1))
+
+        _rand_indices = np.random.randint(0, 256, 50)
+        crosses = m[_rand_indices]
+        plusses = pred[_rand_indices]
+        plt.scatter([_[0] for _ in crosses], [_[1] for _ in crosses], label='truth', marker='x')
+        plt.scatter([_[0] for _ in plusses], [_[1] for _ in plusses], label='preds', marker='+')
+        plt.legend()
+        plt.show()
+
+    # Trying the Optimizer ... Needs more work.
     assert len(params) == 7 + 12*len(point_paths)
     assert len(params) == len(lower_b) == len(upper_b)
 
     pixels = [p for l in all_points for p in l]
-    print "initial error:", projection(np.array(params), np.array(pixels), np.array(M),
-                                        num_images=len(point_paths), num_points=len(M))
+    # print "initial error:", np.mean(projection(np.array(params), np.array(pixels), np.array(M),
+                                        # num_images=len(point_paths), num_points=len(M)))
 
-    import scipy.optimize
-    print scipy.optimize.least_squares(
-        fun=projection, x0=np.array(params), 
-        args=(np.array(pixels), np.array(M), len(point_paths), len(M)),
-        # bounds=(lower_b, upper_b),
-        method='lm', max_nfev=100000
-    )
-    print np.array(params)
+    # import scipy.optimize
+    # print scipy.optimize.least_squares(
+    #     fun=projection, x0=np.array(params), 
+    #     args=(np.array(pixels), np.array(M), len(point_paths), len(M)),
+    #     # bounds=(lower_b, upper_b),
+    #     method='lm', max_nfev=100000
+    # )
+    # print np.array(params)
 
     
