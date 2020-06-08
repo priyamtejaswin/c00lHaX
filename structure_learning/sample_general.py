@@ -18,6 +18,7 @@ Probability values are for seeing `1`
 
 
 import numpy as np
+import cPickle as pickle
 
 
 if __name__ == '__main__':
@@ -80,3 +81,20 @@ if __name__ == '__main__':
     print "Printing first 10 rows ..."
     data = np.array(data, dtype=np.int32)
     print data[:10]
+
+    print "Dumping data object ..."
+    print "Contains:\nnvars\nnames\nadjacency_matrix\ncausality_matrix\n"\
+        "pindep\npdepen\nnsamples\ndata"
+    with open('data_sample_general.cpkl', 'w') as fp:
+        pickle.dump({
+            'nvars': nvars,
+            'names': names,
+            'adjacency_matrix': adjacency_matrix,
+            'causality_matrix': causality_matrix,
+            'pindep': pindep,
+            'pdepen': pdepen,
+            'nsamples': nsamples,
+            'data': data
+        }, fp)
+
+    print "\nDone."
