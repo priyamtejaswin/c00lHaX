@@ -1,4 +1,5 @@
 *.swp
+*.vscode
 .ipynb_checkpoints
 */.ipynb_checkpoints
 .idea
@@ -16,3 +17,4 @@ ner_perceptron/build
 *.so
 fast_corner/box.tar
 fast_corner/box
+structure_learning/*.cpkl
