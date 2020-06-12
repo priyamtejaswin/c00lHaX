@@ -170,6 +170,48 @@ def plot_graph(G):
     plt.show()
 
 
+def orient_edges(G, data, nvars):
+    """
+    Return a matrix for parents, and a collection of undecideds.
+    Please, try not to update the Graph...
+    """
+    parents = np.zeros((nvars, nvars), dtype=np.int32)
+    # Column is PARENT OF Row in `parents` matrix.
+    undecided = set()
+
+    for a in G.nodes():
+        Sa = list(G.neighbors(a))
+        for s1, s2 in combinations(Sa, 2):
+            N_a = set()
+            for path in nx.all_simple_paths(G, s1, s2):
+                N_a.add(path[1])
+                N_a.add(path[-2])
+            # WARNING! all_simple_paths will include edge s1-s2 as well!!!
+            # Hence, you have to discard.
+            N_a.discard(s1)
+            N_a.discard(s2)
+
+            mi_with_a = cond_mi(data, s1, s2, N_a)
+            mi_wout_a = cond_mi(data, s1, s2, N_a-{a})
+
+            if mi_with_a > mi_wout_a+EPSILON:
+                parents[a, s1] = 1
+                parents[a, s2] = 1
+
+            # TODO: This can't be an exact match ...
+            if mi_wout_a+EPSILON >= mi_with_a > mi_wout_a:
+                undecided.add((s1, a, s2))
+
+        ix_prnts = [i for i in range(nvars) if parents[a, i]==1]
+        for x in Sa:
+            if parents[a, x] == 0:  # NOT a `parent` of `a`.
+                for p in ix_prnts:
+                    if (x, a, p) not in undecided:
+                        parents[x, a] = 1
+
+    return parents, undecided
+        
+
 def main(data, names):
     nvars = data.shape[1]
     assert nvars == len(names)
@@ -234,6 +276,12 @@ def main(data, names):
 
     # Thickening complete.
     plot_graph(G)
+
+    # Start orientation.
+    orient_edges(G, data, nvars)
+
+
+
 
 
 if __name__ == '__main__':
