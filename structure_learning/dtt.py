@@ -20,7 +20,7 @@ from collections import defaultdict
 from itertools import combinations
 
 
-EPSILON = 1e-3
+EPSILON = 1e-2
 
 
 def nocond_mi(data, a, b):
@@ -55,6 +55,8 @@ def nocond_mi(data, a, b):
 
 
 def cond_mi(data, a, b, condvars):
+    if len(condvars) == 0:
+        raise NotImplementedError("Should not be computing ConditionalMI with empty Cvars.")
     nsamples = data.shape[0]
 
     all_vars = [a, b]
@@ -69,7 +71,7 @@ def cond_mi(data, a, b, condvars):
     joint = defaultdict(int)
 
     for row in subset:
-        key_joint = tuple(row)
+        key_joint = tuple(row.tolist())
         joint[key_joint] += 1
     
     marg_a = defaultdict(int)
@@ -150,6 +152,10 @@ def try_to_separate(u, v, data, Cvars):
                     else:
                         root_v = minimum_v
                         Cvars = minimum_Cvars
+                    
+                    if len(Cvars) == 1:  # If only 1 var, then this is the `minimum_v`
+                        return False
+                    
             else:
                 return False
 
