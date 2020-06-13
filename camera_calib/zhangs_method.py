@@ -378,7 +378,7 @@ def projection(params, pixels, M, num_images, num_points):
     `num_images` is total images in data.
     `num_points` is number of points in every image.
     """
-    assert len(params) == 5 + 6*num_images
+    assert len(params) == 7 + 6*num_images
     assert len(pixels) == num_images*num_points
     assert len(M) == num_points
 
@@ -389,12 +389,12 @@ def projection(params, pixels, M, num_images, num_points):
     A[2, 2] = 1.0
 
     # u0, v0 = A[0, 2], A[1, 2]
-    # k1, k2 = params[5], params[6]
+    k1, k2 = params[5], params[6]
 
     img_rotations = []
     img_translations = []
 
-    i = 5
+    i = 7
     for _ in range(num_images):
         rodvec = np.array(params[i:i+3])
         R = cv2.Rodrigues(rodvec)[0]
@@ -415,7 +415,30 @@ def projection(params, pixels, M, num_images, num_points):
         r1, r2 = R[:, 0], R[:, 1]
         E = np.vstack([r1, r2, t]).T
 
-        ideal = np.dot(A, np.dot(E, M.T)).T
+        # Uncomment next block if you are discounting distortion.
+        # ideal = np.dot(A, np.dot(E, M.T)).T
+        # pred = np.zeros_like(m)
+        # pred[:, 0] = ideal[:, 0] / ideal[:, 2]
+        # pred[:, 1] = ideal[:, 1] / ideal[:, 2]
+
+        image_coords = np.dot(E, M.T).T
+        normed_coords = np.zeros_like(image_coords)
+        assert normed_coords.shape == (M.shape[0], 3)
+        normed_coords[:, 0] = image_coords[:, 0] / image_coords[:, 2]
+        normed_coords[:, 1] = image_coords[:, 1] / image_coords[:, 2]
+        normed_coords[:, 2] = 1.0
+
+        rconst = np.square(normed_coords[:, 0]) + np.square(normed_coords[:, 1])
+        r2const = np.square(rconst)
+        xcap = np.multiply(normed_coords[:, 0], 1 + k1*rconst + k2*r2const)
+        ycap = np.multiply(normed_coords[:, 1], 1 + k1*rconst + k2*r2const)
+
+        dist_coords = np.zeros_like(normed_coords)
+        dist_coords[:, 0] = xcap
+        dist_coords[:, 1] = ycap
+        dist_coords[:, 2] = 1.0
+
+        ideal = np.dot(A, dist_coords.T).T
         pred = np.zeros_like(m)
         pred[:, 0] = ideal[:, 0] / ideal[:, 2]
         pred[:, 1] = ideal[:, 1] / ideal[:, 2]
@@ -423,19 +446,6 @@ def projection(params, pixels, M, num_images, num_points):
         error = np.linalg.norm(pred-m, axis=1)
         assert len(error) == len(m)
         residual.extend(error.tolist())
-
-        # for j in range(num_points):
-        #     observed = m[j]
-        #     clean = ideal[j]
-
-        #     x, y = clean[0]/clean[2], clean[1]/clean[2]
-        #     rconst = k1*(x**2 + y**2) + k2*((x**2 + y**2)**2)
-
-        #     dx = x + (x - u0)*rconst
-        #     dy = y + (y - v0)*rconst
-
-        #     error = np.linalg.norm([observed[0]-clean[0], observed[1]-dy])
-        #     residual.append(error)
 
     return np.array(residual)
 
@@ -505,7 +515,7 @@ if __name__ == '__main__':
     #[a, g, b, u0, v0] + [k1, k2] + R.flatten() + t.flatten() 
     params = [intrinsic_mat[0, 0], intrinsic_mat[0, 1], intrinsic_mat[1, 1]]
     params += [intrinsic_mat[0, 2], intrinsic_mat[1, 2]]  # u0, v0
-    # params += [0.1, 0.1]  # Distortion k1, k2
+    params += [0, 0]  # Distortion k1, k2
     for ix, H in enumerate(homographies):
         r, t = solve_extrinsics(intrinsic_mat, H)
         rodvec = cv2.Rodrigues(r)[0]
@@ -532,14 +542,14 @@ if __name__ == '__main__':
         _rand_indices = np.random.randint(0, 256, 50)
         crosses = m[_rand_indices]
         plusses = pred[_rand_indices]
-        plt.scatter([_[0] for _ in crosses], [_[1] for _ in crosses], label='truth', marker='x')
-        plt.scatter([_[0] for _ in plusses], [_[1] for _ in plusses], label='preds', marker='+')
-        plt.title('Mean pixel deviation for image: %f'%round(_img_error, 2))
-        plt.legend()
-        plt.show()
+        # plt.scatter([_[0] for _ in crosses], [_[1] for _ in crosses], label='truth', marker='x')
+        # plt.scatter([_[0] for _ in plusses], [_[1] for _ in plusses], label='preds', marker='+')
+        # plt.title('Mean pixel deviation for image: %f'%round(_img_error, 2))
+        # plt.legend()
+        # plt.show()
 
     # Trying the Optimizer ... Needs more work.
-    assert len(params) == 5 + 6*len(point_paths)
+    assert len(params) == 7 + 6*len(point_paths)
 
     pixels = [p for l in all_points for p in l]
     print "initial error:", np.mean(projection(np.array(params), np.array(pixels), np.array(M),
@@ -553,3 +563,50 @@ if __name__ == '__main__':
     )
     print "final error:", np.mean(projection(np.array(opresult.x), np.array(pixels), np.array(M),
                                         num_images=len(point_paths), num_points=len(M)))
+
+    postop_intrinsic = np.zeros((3, 3))
+    postop_intrinsic[0, 0] = opresult.x[0]
+    postop_intrinsic[1, 1] = opresult.x[2]
+    postop_intrinsic[0, 1] = opresult.x[1]
+    postop_intrinsic[0, 2] = opresult.x[3]
+    postop_intrinsic[1, 2] = opresult.x[4]
+    postop_intrinsic[2, 2] = 1.0
+    dk1, dk2 = opresult.x[5], opresult.x[6]
+    euler_vec = opresult.x[-6:-3]
+    trans_vec = opresult.x[-3:]
+
+    R_mat = cv2.Rodrigues(euler_vec)[0]
+    r1, r2 = R_mat[:, 0], R_mat[:, 1]
+    E = np.vstack([r1, r2, trans_vec]).T
+
+    image_coords = np.dot(E, np.array(M).T).T
+    normed_coords = np.zeros_like(image_coords)
+    assert normed_coords.shape == (len(M), 3)
+    normed_coords[:, 0] = image_coords[:, 0] / image_coords[:, 2]
+    normed_coords[:, 1] = image_coords[:, 1] / image_coords[:, 2]
+    normed_coords[:, 2] = 1.0
+
+    rconst = np.square(normed_coords[:, 0]) + np.square(normed_coords[:, 1])
+    r2const = np.square(rconst)
+    xcap = np.multiply(normed_coords[:, 0], 1 + dk1*rconst + dk2*r2const)
+    ycap = np.multiply(normed_coords[:, 1], 1 + dk1*rconst + dk2*r2const)
+
+    dist_coords = np.zeros_like(normed_coords)
+    dist_coords[:, 0] = xcap
+    dist_coords[:, 1] = ycap
+    dist_coords[:, 2] = 1.0
+
+    ideal = np.dot(postop_intrinsic, dist_coords.T).T
+    pred = np.zeros_like(m)
+    pred[:, 0] = ideal[:, 0] / ideal[:, 2]
+    pred[:, 1] = ideal[:, 1] / ideal[:, 2]
+
+    # _rand_indices = np.random.randint(0, 256, 50)
+    # crosses = m[_rand_indices]
+    # plusses = pred[_rand_indices]
+    plt.scatter([_[0] for _ in crosses], [_[1] for _ in crosses], label='truth', marker='x')
+    plt.scatter([_[0] for _ in plusses], [_[1] for _ in plusses], label='closed soln, sans rdist', marker='+')
+    circles = pred[_rand_indices]
+    plt.scatter([_[0] for _ in circles], [_[1] for _ in circles], label='postop soln', s=5)
+    plt.legend()
+    plt.show()
