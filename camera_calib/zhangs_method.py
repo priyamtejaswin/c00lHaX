@@ -564,6 +564,7 @@ if __name__ == '__main__':
     print "final error:", np.mean(projection(np.array(opresult.x), np.array(pixels), np.array(M),
                                         num_images=len(point_paths), num_points=len(M)))
 
+    # Plotting the last image points ...
     postop_intrinsic = np.zeros((3, 3))
     postop_intrinsic[0, 0] = opresult.x[0]
     postop_intrinsic[1, 1] = opresult.x[2]
@@ -610,3 +611,21 @@ if __name__ == '__main__':
     plt.scatter([_[0] for _ in circles], [_[1] for _ in circles], label='postop soln', s=5)
     plt.legend()
     plt.show()
+
+
+    # Printing final parameters ...
+    _iarray = [(0, 0), (0, 1), (1, 1), (0, 2), (1, 2)]
+    print [postop_intrinsic[a, b] for a,b in _iarray]
+    print
+    print dk1, dk2
+    print
+    i = 7
+    for _ in range(len(point_paths)):
+        euler_vec = opresult.x[i:i+3]
+        trans_vec = opresult.x[i+3:i+6]
+        i += 6
+
+        R_mat = cv2.Rodrigues(euler_vec)[0]
+        print R_mat.T
+        print trans_vec
+        print
