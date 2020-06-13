@@ -373,7 +373,7 @@ def projection(params, pixels, M, num_images, num_points):
     """
     Compute reprojection error across all pixels, IRW points M and the unknown parameters.
     `params` format:
-    [a, g, b, u0, v0] + [k1, k2] + R.flatten() + t.flatten()
+    [a, g, b, u0, v0] + [k1, k2] + EulerAngle_vector + t.flatten()
 
     `num_images` is total images in data.
     `num_points` is number of points in every image.
