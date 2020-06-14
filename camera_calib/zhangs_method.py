@@ -615,9 +615,13 @@ if __name__ == '__main__':
 
     # Printing final parameters ...
     _iarray = [(0, 0), (0, 1), (1, 1), (0, 2), (1, 2)]
-    print [postop_intrinsic[a, b] for a,b in _iarray]
+    towrite = []
+    _a = [postop_intrinsic[a, b] for a,b in _iarray]
+    print _a
+    towrite.append(_a)
     print
     print dk1, dk2
+    towrite.append([dk1, dk2])
     print
     i = 7
     for _ in range(len(point_paths)):
@@ -627,5 +631,12 @@ if __name__ == '__main__':
 
         R_mat = cv2.Rodrigues(euler_vec)[0]
         print R_mat.T
+        towrite.extend(R_mat.tolist())
         print trans_vec
+        towrite.append(trans_vec)
         print
+
+    import csv
+    with open('results.txt', 'w') as fp:
+        writer = csv.writer(fp)
+        writer.writerows(towrite)
