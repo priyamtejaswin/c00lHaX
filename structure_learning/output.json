@@ -1,0 +1,467 @@
+{
+    "nodes": [
+        {
+            "id": 0,
+            "name": "ANAPHYLAXIS",
+            "label": "0"
+        },
+        {
+            "id": 1,
+            "name": "ARTCO2",
+            "label": "1"
+        },
+        {
+            "id": 2,
+            "name": "BP",
+            "label": "2"
+        },
+        {
+            "id": 3,
+            "name": "CATECHOL",
+            "label": "3"
+        },
+        {
+            "id": 4,
+            "name": "CO",
+            "label": "4"
+        },
+        {
+            "id": 5,
+            "name": "CVP",
+            "label": "5"
+        },
+        {
+            "id": 6,
+            "name": "DISCONNECT",
+            "label": "6"
+        },
+        {
+            "id": 7,
+            "name": "ERRCAUTER",
+            "label": "7"
+        },
+        {
+            "id": 8,
+            "name": "ERRLOWOUTPUT",
+            "label": "8"
+        },
+        {
+            "id": 9,
+            "name": "EXPCO2",
+            "label": "9"
+        },
+        {
+            "id": 10,
+            "name": "FIO2",
+            "label": "10"
+        },
+        {
+            "id": 11,
+            "name": "HISTORY",
+            "label": "11"
+        },
+        {
+            "id": 12,
+            "name": "HR",
+            "label": "12"
+        },
+        {
+            "id": 13,
+            "name": "HRBP",
+            "label": "13"
+        },
+        {
+            "id": 14,
+            "name": "HREKG",
+            "label": "14"
+        },
+        {
+            "id": 15,
+            "name": "HRSAT",
+            "label": "15"
+        },
+        {
+            "id": 16,
+            "name": "HYPOVOLEMIA",
+            "label": "16"
+        },
+        {
+            "id": 17,
+            "name": "INSUFFANESTH",
+            "label": "17"
+        },
+        {
+            "id": 18,
+            "name": "INTUBATION",
+            "label": "18"
+        },
+        {
+            "id": 19,
+            "name": "KINKEDTUBE",
+            "label": "19"
+        },
+        {
+            "id": 20,
+            "name": "LVEDVOLUME",
+            "label": "20"
+        },
+        {
+            "id": 21,
+            "name": "LVFAILURE",
+            "label": "21"
+        },
+        {
+            "id": 22,
+            "name": "MINVOL",
+            "label": "22"
+        },
+        {
+            "id": 23,
+            "name": "MINVOLSET",
+            "label": "23"
+        },
+        {
+            "id": 24,
+            "name": "PAP",
+            "label": "24"
+        },
+        {
+            "id": 25,
+            "name": "PCWP",
+            "label": "25"
+        },
+        {
+            "id": 26,
+            "name": "PRESS",
+            "label": "26"
+        },
+        {
+            "id": 27,
+            "name": "PULMEMBOLUS",
+            "label": "27"
+        },
+        {
+            "id": 28,
+            "name": "PVSAT",
+            "label": "28"
+        },
+        {
+            "id": 29,
+            "name": "SAO2",
+            "label": "29"
+        },
+        {
+            "id": 30,
+            "name": "SHUNT",
+            "label": "30"
+        },
+        {
+            "id": 31,
+            "name": "STROKEVOLUME",
+            "label": "31"
+        },
+        {
+            "id": 32,
+            "name": "TPR",
+            "label": "32"
+        },
+        {
+            "id": 33,
+            "name": "VENTALV",
+            "label": "33"
+        },
+        {
+            "id": 34,
+            "name": "VENTLUNG",
+            "label": "34"
+        },
+        {
+            "id": 35,
+            "name": "VENTMACH",
+            "label": "35"
+        },
+        {
+            "id": 36,
+            "name": "VENTTUBE",
+            "label": "36"
+        }
+    ],
+    "links": [
+        {
+            "directed": false,
+            "source": 0,
+            "target": 32,
+            "value": 0.010771940586138807
+        },
+        {
+            "directed": true,
+            "source": 33,
+            "target": 1,
+            "value": 0.5270779725991014
+        },
+        {
+            "directed": true,
+            "source": 1,
+            "target": 3,
+            "value": 0.05732797516609836
+        },
+        {
+            "directed": false,
+            "source": 1,
+            "target": 9,
+            "value": 0.046495688719007125
+        },
+        {
+            "directed": true,
+            "source": 32,
+            "target": 2,
+            "value": 0.31214757246740193
+        },
+        {
+            "directed": true,
+            "source": 4,
+            "target": 2,
+            "value": 0.130908493824325
+        },
+        {
+            "directed": true,
+            "source": 32,
+            "target": 3,
+            "value": 0.08946973776471052
+        },
+        {
+            "directed": true,
+            "source": 3,
+            "target": 12,
+            "value": 0.17630232046541325
+        },
+        {
+            "directed": true,
+            "source": 12,
+            "target": 4,
+            "value": 0.24756625349441863
+        },
+        {
+            "directed": true,
+            "source": 31,
+            "target": 4,
+            "value": 0.31036283312121704
+        },
+        {
+            "directed": false,
+            "source": 5,
+            "target": 20,
+            "value": 0.45093044136779736
+        },
+        {
+            "directed": true,
+            "source": 6,
+            "target": 36,
+            "value": 0.16448360095216452
+        },
+        {
+            "directed": true,
+            "source": 14,
+            "target": 7,
+            "value": 0.2211873854849597
+        },
+        {
+            "directed": true,
+            "source": 15,
+            "target": 7,
+            "value": 0.2177719016269644
+        },
+        {
+            "directed": true,
+            "source": 8,
+            "target": 13,
+            "value": 0.12400892375757595
+        },
+        {
+            "directed": true,
+            "source": 34,
+            "target": 9,
+            "value": 0.17287236432648262
+        },
+        {
+            "directed": false,
+            "source": 10,
+            "target": 28,
+            "value": 0.016903241325491612
+        },
+        {
+            "directed": false,
+            "source": 11,
+            "target": 21,
+            "value": 0.1370537903545338
+        },
+        {
+            "directed": true,
+            "source": 12,
+            "target": 13,
+            "value": 0.4124575936321671
+        },
+        {
+            "directed": true,
+            "source": 12,
+            "target": 14,
+            "value": 0.3680292942856445
+        },
+        {
+            "directed": true,
+            "source": 12,
+            "target": 15,
+            "value": 0.37012179320551863
+        },
+        {
+            "directed": true,
+            "source": 14,
+            "target": 15,
+            "value": 0.519260659884309
+        },
+        {
+            "directed": false,
+            "source": 16,
+            "target": 20,
+            "value": 0.28951383125166624
+        },
+        {
+            "directed": false,
+            "source": 16,
+            "target": 31,
+            "value": 0.08970665589793261
+        },
+        {
+            "directed": true,
+            "source": 33,
+            "target": 18,
+            "value": 0.14332501139157688
+        },
+        {
+            "directed": true,
+            "source": 18,
+            "target": 26,
+            "value": 0.025523291467939274
+        },
+        {
+            "directed": true,
+            "source": 34,
+            "target": 18,
+            "value": 0.018924432282433318
+        },
+        {
+            "directed": false,
+            "source": 18,
+            "target": 22,
+            "value": 0.09755821600477994
+        },
+        {
+            "directed": true,
+            "source": 18,
+            "target": 30,
+            "value": 0.10811566479260327
+        },
+        {
+            "directed": true,
+            "source": 26,
+            "target": 19,
+            "value": 0.01893496770859477
+        },
+        {
+            "directed": false,
+            "source": 20,
+            "target": 25,
+            "value": 0.6073061714466688
+        },
+        {
+            "directed": false,
+            "source": 20,
+            "target": 21,
+            "value": 0.1265928494930369
+        },
+        {
+            "directed": false,
+            "source": 21,
+            "target": 31,
+            "value": 0.07413788769349774
+        },
+        {
+            "directed": true,
+            "source": 34,
+            "target": 22,
+            "value": 0.42444584096833005
+        },
+        {
+            "directed": false,
+            "source": 23,
+            "target": 35,
+            "value": 0.3241914968675867
+        },
+        {
+            "directed": false,
+            "source": 24,
+            "target": 27,
+            "value": 0.022430352315908543
+        },
+        {
+            "directed": true,
+            "source": 26,
+            "target": 34,
+            "value": 0.03785104283974155
+        },
+        {
+            "directed": true,
+            "source": 36,
+            "target": 26,
+            "value": 0.14508321092170404
+        },
+        {
+            "directed": false,
+            "source": 27,
+            "target": 30,
+            "value": 0.021633721222338313
+        },
+        {
+            "directed": true,
+            "source": 33,
+            "target": 28,
+            "value": 0.46163667111204665
+        },
+        {
+            "directed": true,
+            "source": 28,
+            "target": 29,
+            "value": 0.43171314644409886
+        },
+        {
+            "directed": true,
+            "source": 30,
+            "target": 29,
+            "value": 0.017853604984994102
+        },
+        {
+            "directed": true,
+            "source": 33,
+            "target": 34,
+            "value": 0.47636357763938403
+        },
+        {
+            "directed": true,
+            "source": 36,
+            "target": 33,
+            "value": 0.26331121432154164
+        },
+        {
+            "directed": true,
+            "source": 36,
+            "target": 34,
+            "value": 0.23882022544976483
+        },
+        {
+            "directed": true,
+            "source": 35,
+            "target": 36,
+            "value": 0.3677279513514461
+        }
+    ]
+}
