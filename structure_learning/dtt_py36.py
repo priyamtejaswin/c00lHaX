@@ -13,10 +13,12 @@ DTT => Drafting Thickening Thinning
 
 import os
 import sys
+import pdb
 import json
 import time
 import numpy as np
 import networkx as nx
+import graph_tool.all as gt
 import pickle
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -152,6 +154,36 @@ def get_nbrs_to_sep(G, u, v, parents=None):
         Nbrs_u, Nbrs_v = Nbrs_v, Nbrs_u
 
     return Nbrs_u, Nbrs_v
+
+
+@timeit
+def tools_get_nbrs_to_sep(G, u, v, parents=None):
+    """
+    Implements the same function as `get_nbrs_to_sep`,
+    except, G is a `graph_tool` undirected graph.
+
+    Following:
+    <https://graph-tool.skewed.de/static/doc/topology.html?highlight=paths#graph_tool.topology.all_shortest_paths>
+    """
+    Nbrs_u, Nbrs_v = set(), set()
+    for path in gt.all_paths(G, u, v):
+        # print("Start debugger ...")
+        # pdb.set_trace()
+        Nbrs_u.add(path[1].item())
+        Nbrs_v.add(path[-2].item())
+
+    if parents is not None:
+        for ix, val in enumerate(parents[:, u].tolist()):
+            if val == 1:
+                Nbrs_u.discard(ix)
+        for ix, val in enumerate(parents[:, v].tolist()):
+            if val == 1:
+                Nbrs_v.discard(ix)
+
+    if len(Nbrs_u) > len(Nbrs_v):
+        Nbrs_u, Nbrs_v = Nbrs_v, Nbrs_u
+
+    return Nbrs_u, Nbrs_v 
 
 
 @timeit
@@ -333,6 +365,13 @@ def main(data, names):
     print("Drafting complete ...")
     # plot_graph(G)
 
+    # Prepare the `gt` graph ...
+    othergraph = gt.Graph(directed=False)
+    ep_score = othergraph.new_ep("double")
+    draft_edges = [(u, v, d['mi_score']) for u, v, d in G.edges(data=True)]
+    othergraph.add_edge_list(draft_edges, eprops=[ep_score])
+    othergraph.save('draft.gt', fmt='gt')
+    
     # Start thickening.
     ptr = 0
     remain = len(L)
@@ -344,7 +383,7 @@ def main(data, names):
 
         print("Candidate:", ptr, cedge)
 
-        N1, N2 = get_nbrs_to_sep(G, u, v)
+        N1, N2 = tools_get_nbrs_to_sep(othergraph, u, v)
 
         if try_to_separate(u, v, data, N1):
             ptr += 1
