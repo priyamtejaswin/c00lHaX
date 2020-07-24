@@ -12,6 +12,7 @@ DTT => Drafting Thickening Thinning
 import os
 import sys
 import json
+import time
 import numpy as np
 import networkx as nx
 import cPickle as pickle
@@ -20,6 +21,17 @@ from tqdm import tqdm
 from collections import deque
 from collections import defaultdict
 from itertools import combinations
+
+
+def timeit(method):
+    def timed(*args, **kw):
+        ts = time.time()
+        result = method(*args, **kw)
+        te = time.time()
+        print '%r  %2.2f s' % \
+                (method.__name__, te - ts)
+        return result
+    return timed
 
 
 EPSILON = 0.003
@@ -139,6 +151,7 @@ def get_nbrs_to_sep(G, u, v, parents=None):
     return Nbrs_u, Nbrs_v
 
 
+@timeit
 def try_to_separate(u, v, data, Cvars):
     # Conduct CI test using Nbrs_u
     if len(Cvars) == 0:
@@ -270,17 +283,25 @@ def main(data, names):
     G = nx.Graph()
     for i in range(nvars):
         G.add_node(i, name=names[i])
-
-    pairwise_mi_scores = []
+    
     print "Num vars: %d, nC2: %d"%(nvars, nvars*(nvars-1)/2)
-    for a, b in tqdm(combinations(range(nvars), 2)):
-        mi_score = nocond_mi(data, a, b)
-        if mi_score > EPSILON:
-            pairwise_mi_scores.append(((a, b), mi_score))
 
-    L = sorted(pairwise_mi_scores, reverse=True, key=lambda x: x[1])
-    for row in L:
-        print row
+    if 'chow_liu_draft_list.cpkl' not in os.listdir(os.getcwd()):
+        pairwise_mi_scores = []
+        for a, b in tqdm(combinations(range(nvars), 2)):
+            mi_score = nocond_mi(data, a, b)
+            if mi_score > EPSILON:
+                pairwise_mi_scores.append(((a, b), mi_score))
+
+        L = sorted(pairwise_mi_scores, reverse=True, key=lambda x: x[1])
+        for row in L:
+            print row
+
+        with open('chow_liu_draft_list.cpkl', 'w') as fp:
+            pickle.dump(L, fp)
+    else:
+        with open('chow_liu_draft_list.cpkl') as fp:
+            L = pickle.load(fp)
     
     # Start drafting.
     _first = L.pop(0)
@@ -307,16 +328,18 @@ def main(data, names):
 
     # Drafting complete.
     print "Drafting complete ..."
-    plot_graph(G)
+    # plot_graph(G)
 
     # Start thickening.
     ptr = 0
     remain = len(L)
-    _pbar = tqdm(total=remain)
+    # _pbar = tqdm(total=remain)
     while ptr < remain:
         cedge = L[ptr]
         u, v = cedge[0]
         score = cedge[1]
+
+        print "Candidate:", ptr, cedge
 
         N1, N2 = get_nbrs_to_sep(G, u, v)
 
@@ -324,14 +347,16 @@ def main(data, names):
             ptr += 1
         else:
             # The first time it fails, re-try with N2.
-            if try_to_separate(u, v, data, N2):
+            if (N1 != N2) and try_to_separate(u, v, data, N2):
                 ptr += 1
             else:
                 G.add_edge(u, v, mi_score=score)
                 ptr += 1
 
-        _pbar.update(1)
-    _pbar.close()
+        print
+
+        # _pbar.update(1)
+    # _pbar.close()
 
     # Thickening complete.
     print "Thickening complete ..."
