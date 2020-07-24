@@ -129,6 +129,7 @@ def cond_mi(data, a, b, condvars):
     return score
 
 
+@timeit
 def get_nbrs_to_sep(G, u, v, parents=None):
     """
     Done TODO: Add support to delete nodes from Nbrs_u, Nbrs_v,
@@ -299,10 +300,10 @@ def main(data, names):
         for row in L:
             print(row)
 
-        with open('chow_liu_draft_list.cpkl', 'w') as fp:
+        with open('chow_liu_draft_list.cpkl', 'wb') as fp:
             pickle.dump(L, fp)
     else:
-        with open('chow_liu_draft_list.cpkl') as fp:
+        with open('chow_liu_draft_list.cpkl', 'rb') as fp:
             L = pickle.load(fp)
     
     # Start drafting.
