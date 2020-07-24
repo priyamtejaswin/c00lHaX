@@ -272,6 +272,7 @@ def main(data, names):
         G.add_node(i, name=names[i])
 
     pairwise_mi_scores = []
+    print "Num vars: %d, nC2: %d"%(nvars, nvars*(nvars-1)/2)
     for a, b in tqdm(combinations(range(nvars), 2)):
         mi_score = nocond_mi(data, a, b)
         if mi_score > EPSILON:
@@ -311,6 +312,7 @@ def main(data, names):
     # Start thickening.
     ptr = 0
     remain = len(L)
+    _pbar = tqdm(total=remain)
     while ptr < remain:
         cedge = L[ptr]
         u, v = cedge[0]
@@ -328,7 +330,11 @@ def main(data, names):
                 G.add_edge(u, v, mi_score=score)
                 ptr += 1
 
+        _pbar.update(1)
+    _pbar.close()
+
     # Thickening complete.
+    print "Thickening complete ..."
     plot_graph(G)
 
     # Start orientation.
@@ -348,7 +354,7 @@ def main(data, names):
 
     # Start thinning.
     all_edges = list(G.edges.data())
-    for etup in all_edges:
+    for etup in tqdm(all_edges):
         u, v, d = etup
         if len(list(nx.all_simple_paths(G, u, v))) > 1:
             # Temporarily delete this edge ...
@@ -412,9 +418,11 @@ if __name__ == '__main__':
     import pandas as pd
     from sklearn.preprocessing import LabelEncoder
     lbe = LabelEncoder()
-    raw = pd.read_csv('~/Downloads/ALARM10k.csv', index_col=None)
-    encoded = {c:lbe.fit_transform(raw[c]) for c in raw.columns}
-    alarm = pd.DataFrame.from_dict(encoded)
+    raw = pd.read_csv(sys.argv[1], index_col=None, dtype=str)
+    main(raw.to_numpy()[:10000], raw.columns)
+    
+    # encoded = {c:lbe.fit_transform(raw[c]) for c in raw.columns}
+    # alarm = pd.DataFrame.from_dict(encoded)
 
-    print alarm.shape
-    main(alarm.to_numpy(), alarm.columns)
+    # print alarm.shape
+    # main(alarm.to_numpy(), alarm.columns)
