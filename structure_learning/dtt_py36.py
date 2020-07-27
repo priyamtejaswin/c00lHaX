@@ -11,6 +11,8 @@ DTT => Drafting Thickening Thinning
 """
 
 
+import matplotlib
+matplotlib.use("TkAgg")
 import os
 import sys
 import pdb
@@ -243,6 +245,20 @@ def plot_graph(G, parents=None):
     plt.show()
 
 
+def tools_plot_graph(G):
+    """
+    Plots a `gt` graph ...
+    """
+    pos = gt.sfdp_layout(G)
+    vprops = {v:G.vertex_properties['name'][v] for \
+        v in G.get_vertices()}
+    gt.graph_draw(
+        G, pos=pos,
+        vprops=vprops,
+        output="graph-draw.pdf"
+    )
+
+
 def orient_edges(G, data, nvars):
     """
     Return a matrix for parents, and a collection of undecideds.
@@ -252,13 +268,16 @@ def orient_edges(G, data, nvars):
     # Column is PARENT OF Row in `parents` matrix.
     undecided = set()
 
-    for a in tqdm(G.nodes()):
-        Sa = list(G.neighbors(a))
+    for vertex in tqdm(G.get_vertices()):
+        a = vertex.item()
+        Sa = [x.item() for x in G.get_all_neighbors(a)]
+
         for s1, s2 in combinations(Sa, 2):
             N_a = set()
-            for path in nx.all_simple_paths(G, s1, s2):
-                N_a.add(path[1])
-                N_a.add(path[-2])
+            # for path in nx.all_simple_paths(G, s1, s2):
+            for path in gt.all_paths(G, s1, s2):            
+                N_a.add(path[1].item())
+                N_a.add(path[-2].item())
             # WARNING! all_simple_paths will include edge s1-s2 as well!!!
             # Hence, you have to discard.
             N_a.discard(s1)
@@ -295,14 +314,14 @@ def orient_edges(G, data, nvars):
 
     # Check all triples ...
     valid_triples = set()
-    for edge in G.edges:
+    for edge in G.get_edges():
         u, v = edge
-        for n in G.neighbors(u):
+        for n in G.get_all_neighbors(u):
             if n != v:
-                valid_triples.add((n, u, v))
-        for n in G.neighbors(v):
+                valid_triples.add((n.item(), u.item(), v.item()))
+        for n in G.get_all_neighbors(v):
             if n != u:
-                valid_triples.add((u, v, n))
+                valid_triples.add((u.item(), v.item(), n.item()))
 
     for a,b,c in valid_triples:
         if parents[b, a] == 1 and parents[b, c] == 0 and parents[c, b] == 0 and (a, b, c) not in undecided:
@@ -338,6 +357,13 @@ def main(data, names):
         with open('chow_liu_draft_list.cpkl', 'rb') as fp:
             L = pickle.load(fp)
     
+    dedge_scores = {}
+    for (u, v), s in L:
+        dedge_scores[(u, v)] = s
+        dedge_scores[(v, u)] = s
+    
+    assert len(dedge_scores) == 2*len(L)
+    
     # Start drafting.
     _first = L.pop(0)
     G.add_edge(_first[0][0], _first[0][1], mi_score=_first[1])
@@ -367,9 +393,22 @@ def main(data, names):
 
     # Prepare the `gt` graph ...
     othergraph = gt.Graph(directed=False)
+
+    ## Edge Property (mi_score)
     ep_score = othergraph.new_ep("double")
     draft_edges = [(u, v, d['mi_score']) for u, v, d in G.edges(data=True)]
     othergraph.add_edge_list(draft_edges, eprops=[ep_score])
+    othergraph.edge_properties['mi_score'] = ep_score
+
+    ## Vertex Property (name)
+    vp_name = othergraph.new_vp("string")
+    for ix in othergraph.get_vertices():
+        v = othergraph.vertex(ix)
+        vp_name[v] = names[ix.item()]
+
+    othergraph.vertex_properties['name'] = vp_name
+
+    ## Save graph in `gt` format ...
     othergraph.save('draft.gt', fmt='gt')
     
     # Start thickening.
@@ -392,7 +431,8 @@ def main(data, names):
             if (N1 != N2) and try_to_separate(u, v, data, N2):
                 ptr += 1
             else:
-                G.add_edge(u, v, mi_score=score)
+                # G.add_edge(u, v, mi_score=score)
+                othergraph.add_edge_list([(u, v, score)], eprops=[ep_score])
                 ptr += 1
 
         print('')
@@ -402,35 +442,40 @@ def main(data, names):
 
     # Thickening complete.
     print("Thickening complete ...")
-    plot_graph(G)
+    # Update the original `networkx` graph `G`.
+    G = nx.Graph()
+    print("New nx.Graph created ...")
+    G.add_edges_from([(u.item(), v.item(), {'mi_score': dedge_scores[(u.item(), v.item())]}) 
+                        for u, v in othergraph.get_edges()])
+    print("nx.Graph:G updated with edges from `gt` graph ...")
+    # print("Plotting ...")
+    # plot_graph(G)
+    # tools_plot_graph(othergraph)
 
     # Start orientation.
-    parents, undecided = orient_edges(G, data, nvars)
+    parents, undecided = orient_edges(othergraph, data, nvars)
 
     # Orientation complete.
-    diG = nx.DiGraph()
-    for _n, _d in G.nodes(data=True):
-        diG.add_node(_n, **_d)
-    for etup in G.edges.data():
-        _u, _v, _d = etup
-        diG.add_edge(_u, _v, **_d)
-
-    plot_graph(diG, parents)
-
     print(parents)
 
     # Start thinning.
-    all_edges = list(G.edges.data())
+    # all_edges = list(G.edges.data())
+    all_edges = othergraph.get_edges()
     for etup in tqdm(all_edges):
-        u, v, d = etup
-        if len(list(nx.all_simple_paths(G, u, v))) > 1:
+        u, v = etup
+        u, v = u.item(), v.item()
+
+        # if len(list(nx.all_simple_paths(G, u, v))) > 1:
+        paths_gt = list(gt.all_paths(othergraph, u, v))
+        if len(paths_gt) > 1:
             # Temporarily delete this edge ...
-            G.remove_edge(u, v)
+            _source, _target = othergraph.vertex(u), othergraph.vertex(v)
+            othergraph.remove_edge(othergraph.edge(_source, _target))
 
             # Try to separate ...
-            N1, N2 = get_nbrs_to_sep(G, u, v, parents=parents)
+            N1, N2 = tools_get_nbrs_to_sep(othergraph, u, v, parents=parents)
             if len(N1) == 0 and len(N2) == 0:
-                G.add_edge(u, v, **d)
+                othergraph.add_edge(_source, _target)
                 continue
 
             if len(N1)>0 and try_to_separate(u, v, data, N1):
@@ -440,10 +485,15 @@ def main(data, names):
                 if len(N2)>0 and try_to_separate(u, v, data, N2):
                     pass
                 else:
-                    G.add_edge(u, v, **d)
+                    othergraph.add_edge(_source, _target)
 
     # Thinning complete.
-    plot_graph(G)
+    # plot_graph(G)
+    G = nx.Graph()
+    G.add_edges_from([(u.item(), v.item(), {'mi_score': dedge_scores[(u.item(), v.item())]}) 
+                            for u, v in othergraph.get_edges()])
+    for _n in G.nodes():
+        G.nodes[_n]['name'] = names[_n]
 
     # Export to viz in D3.js
     nodes, links = [], []
@@ -470,6 +520,8 @@ def main(data, names):
     with open('output.json', 'w') as fp:
         fp.write(json.dumps({'nodes':nodes, 'links':links}, indent=4, separators=(',', ': ')))
 
+    print("D3 output saved in `output.json`\n")
+
 
 if __name__ == '__main__':
     # # path = sys.argv[1]
@@ -486,7 +538,7 @@ if __name__ == '__main__':
     from sklearn.preprocessing import LabelEncoder
     lbe = LabelEncoder()
     raw = pd.read_csv(sys.argv[1], index_col=None, dtype=str)
-    main(raw.to_numpy()[:10000], raw.columns)
+    main(raw.to_numpy(), raw.columns)
     
     # encoded = {c:lbe.fit_transform(raw[c]) for c in raw.columns}
     # alarm = pd.DataFrame.from_dict(encoded)
