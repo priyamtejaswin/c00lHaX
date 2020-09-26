@@ -25,13 +25,13 @@ def load_img(img_path, resize=True):
     raw = cv.imread(img_path, 0)
     if resize:
         height, width = raw.shape
-        if height >= 500 and height <= 600:
+        if height >= 400 and height <= 600:
             return raw
         elif height > 600:
-            scale = round(height/550.0, 2)
+            scale = round(height/500.0, 2)
             res_w = int(round(width/scale))
             # resize(src, (new_width, new_height)
-            return cv.resize(raw, (res_w, 550))
+            return cv.resize(raw, (res_w, 500))
         else:
             raise ValueError("Input shape (%d, %d) is too small.", rows, cols)
 
@@ -41,7 +41,7 @@ def get_first_keyframe():
     Write something on screen -- tell user to hit <space> to capture.
     """
     # Sample `right` image for now ...
-    return load_img('./samples/aloeR.jpg')
+    return load_img('./samples/right.jpg')
 
 
 def get_second_keyfame():
@@ -49,7 +49,7 @@ def get_second_keyfame():
     Write something on screen -- tell user to hit <space> to capture.
     """
     # Sample 'left' image for now ...
-    return load_img('./samples/aloeL.jpg')
+    return load_img('./samples/left.jpg')
 
 
 def eight_pt(pts_before, pts_after, hnorm, wnorm):
@@ -134,9 +134,10 @@ def main():
 
     pts_first, pts_second = prepare_matches(kps_first, kps_second, top_matches[:8])
 
-    Emat = eight_pt(pts_before=pts_first, pts_after=pts_second, hnorm=hnorm, wnorm=wnorm)
+    Emat = eight_pt(pts_before=pts_first, pts_after=pts_second, hnorm=lambda x:x, wnorm=lambda x:x)
     print Emat
 
+    print cv.findFundamentalMat(np.int32(pts_first), np.int32(pts_second), cv.FM_8POINT)[0]
 
 if __name__ == '__main__':
     print "Starting ..."
