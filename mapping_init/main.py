@@ -11,7 +11,10 @@ Following PTAM 2007
 
 import numpy as np
 import cv2 as cv
+import ipdb
 import os
+from matplotlib import pyplot as plt
+from matplotlib.patches import ConnectionPatch
 
 
 def get_camera_feed():
@@ -87,11 +90,12 @@ def eight_pt(pts_before, pts_after, hnorm, wnorm):
 
 def prepare_matches(kps_first, kps_second, matches):
     points_first, points_second = [], []
+    ipdb.set_trace()
     for m in matches:
         if m.imgIdx == 0:
-            train, query = kps_first[m.trainIdx].pt, kps_second[m.queryIdx].pt
+            train, query = kps_first[m.queryIdx].pt, kps_second[m.trainIdx].pt
         elif m.imgIdx == 1:
-            query, train = kps_first[m.trainIdx].pt, kps_second[m.queryIdx].pt
+            query, train = kps_first[m.queryIdx].pt, kps_second[m.trainIdx].pt
         else:
             raise ValueError("Unknown imgIdx in DMatch object.")
 
@@ -128,16 +132,27 @@ def main():
     kps_second, des_second = orb.detectAndCompute(kf_second, None)
 
     matches = bfm.match(des_first, des_second)
+    assert all(_.imgIdx==0 for _ in matches) == True
     total = len(matches)
     top50 = int(0.5 * total)
     top_matches = sorted(matches, key=lambda x:x.distance)[:top50]
 
+    # Just plotting ...
+    _img = cv.drawMatches(kf_first, kps_first, kf_second, kps_second, top_matches[:1],
+                          None,flags=cv.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+    cv.imshow('matches', _img)
+    cv.waitKey(0)
+    cv.destroyAllWindows()
+
     pts_first, pts_second = prepare_matches(kps_first, kps_second, top_matches[:8])
+    for row in zip(pts_first, pts_second):
+        print row
 
     Emat = eight_pt(pts_before=pts_first, pts_after=pts_second, hnorm=lambda x:x, wnorm=lambda x:x)
     print Emat
 
     print cv.findFundamentalMat(np.int32(pts_first), np.int32(pts_second), cv.FM_8POINT)[0]
+
 
 if __name__ == '__main__':
     print "Starting ..."
