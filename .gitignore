@@ -18,3 +18,4 @@ ner_perceptron/build
 fast_corner/box.tar
 fast_corner/box
 structure_learning/*.cpkl
+mapping_init/thirdparty/pangolin/
