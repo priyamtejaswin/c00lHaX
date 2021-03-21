@@ -1,0 +1,5 @@
+# Configuration file for coverage.py test coverage tool.
+
+[run]
+branch = True
+source = pymvg
