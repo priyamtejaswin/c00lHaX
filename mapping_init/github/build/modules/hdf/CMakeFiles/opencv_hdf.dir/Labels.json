@@ -1,0 +1,57 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/hdf/include/opencv2/hdf.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_hdf",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/hdf/include/opencv2/hdf/hdf5.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_hdf",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/hdf/src/hdf5.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_hdf",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/hdf/src/precomp.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_hdf",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/build/cvconfig.h"
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/build/opencv2/opencv_modules.hpp"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"Extra",
+			"opencv_hdf",
+			"Module"
+		],
+		"name" : "opencv_hdf"
+	}
+}

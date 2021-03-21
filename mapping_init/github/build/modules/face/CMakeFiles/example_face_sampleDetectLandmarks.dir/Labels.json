@@ -1,0 +1,24 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/face/samples/sampleDetectLandmarks.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_face",
+				"Sample"
+			]
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"Extra",
+			"opencv_face",
+			"Sample"
+		],
+		"name" : "example_face_sampleDetectLandmarks"
+	}
+}

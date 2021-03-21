@@ -1,0 +1,33 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/rapid/test/test_main.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_rapid",
+				"AccuracyTest"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/rapid/test/test_precomp.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_rapid",
+				"AccuracyTest"
+			]
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"Extra",
+			"opencv_rapid",
+			"AccuracyTest"
+		],
+		"name" : "opencv_test_rapid"
+	}
+}

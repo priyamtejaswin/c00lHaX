@@ -1,0 +1,24 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/plot/samples/plot_demo.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_plot",
+				"Sample"
+			]
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"Extra",
+			"opencv_plot",
+			"Sample"
+		],
+		"name" : "example_plot_plot_demo"
+	}
+}

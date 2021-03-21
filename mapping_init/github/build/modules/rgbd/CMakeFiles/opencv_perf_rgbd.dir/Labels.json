@@ -1,0 +1,42 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/rgbd/perf/perf_main.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_rgbd",
+				"PerfTest"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/rgbd/perf/perf_tsdf.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_rgbd",
+				"PerfTest"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/rgbd/perf/perf_precomp.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_rgbd",
+				"PerfTest"
+			]
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"Extra",
+			"opencv_rgbd",
+			"PerfTest"
+		],
+		"name" : "opencv_perf_rgbd"
+	}
+}

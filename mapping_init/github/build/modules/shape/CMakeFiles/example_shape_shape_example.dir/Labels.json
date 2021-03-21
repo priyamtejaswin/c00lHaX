@@ -1,0 +1,24 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/shape/samples/shape_example.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_shape",
+				"Sample"
+			]
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"Extra",
+			"opencv_shape",
+			"Sample"
+		],
+		"name" : "example_shape_shape_example"
+	}
+}

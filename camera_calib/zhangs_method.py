@@ -542,11 +542,11 @@ if __name__ == '__main__':
         _rand_indices = np.random.randint(0, 256, 50)
         crosses = m[_rand_indices]
         plusses = pred[_rand_indices]
-        # plt.scatter([_[0] for _ in crosses], [_[1] for _ in crosses], label='truth', marker='x')
-        # plt.scatter([_[0] for _ in plusses], [_[1] for _ in plusses], label='preds', marker='+')
-        # plt.title('Mean pixel deviation for image: %f'%round(_img_error, 2))
-        # plt.legend()
-        # plt.show()
+        plt.scatter([_[0] for _ in crosses], [_[1] for _ in crosses], label='truth', marker='x')
+        plt.scatter([_[0] for _ in plusses], [_[1] for _ in plusses], label='preds', marker='+')
+        plt.title('Mean pixel deviation for image: %f'%round(_img_error, 2))
+        plt.legend()
+        plt.show()
 
     # Trying the Optimizer ... Needs more work.
     assert len(params) == 7 + 6*len(point_paths)

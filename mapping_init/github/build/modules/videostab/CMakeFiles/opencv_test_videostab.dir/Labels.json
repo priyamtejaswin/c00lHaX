@@ -1,0 +1,51 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/videostab/test/test_main.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_videostab",
+				"AccuracyTest"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/videostab/test/test_motion_estimation.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_videostab",
+				"AccuracyTest"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/videostab/test/test_stabilizer.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_videostab",
+				"AccuracyTest"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/videostab/test/test_precomp.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_videostab",
+				"AccuracyTest"
+			]
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"Extra",
+			"opencv_videostab",
+			"AccuracyTest"
+		],
+		"name" : "opencv_test_videostab"
+	}
+}

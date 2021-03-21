@@ -1,0 +1,51 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/text/test/test_detection.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_text",
+				"AccuracyTest"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/text/test/test_detection_swt.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_text",
+				"AccuracyTest"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/text/test/test_main.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_text",
+				"AccuracyTest"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/text/test/test_precomp.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_text",
+				"AccuracyTest"
+			]
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"Extra",
+			"opencv_text",
+			"AccuracyTest"
+		],
+		"name" : "opencv_test_text"
+	}
+}

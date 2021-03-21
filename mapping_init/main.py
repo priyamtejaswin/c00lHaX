@@ -111,6 +111,10 @@ def znm(mu, sigma):
     return normalize
 
 
+def triangulate(F, pts_first, pts_second):
+    # Projective matrix for first image is trivial.
+    p1 = np.concat([np.eye(3), np.zeros((3, 1))])
+
 def main():
     kf_first = get_first_keyframe()
     kf_second = get_second_keyfame()

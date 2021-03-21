@@ -1,0 +1,219 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/include/opencv2/mcc.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/include/opencv2/mcc/checker_detector.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/include/opencv2/mcc/checker_model.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/bound_min.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/charts.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/checker_detector.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/checker_model.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/common.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/debug.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/graph_cluster.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/mcc.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/wiener_filter.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/bound_min.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/charts.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/checker_detector.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/checker_model.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/common.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/debug.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/dictionary.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/graph_cluster.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/precomp.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/mcc/src/wiener_filter.hpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_mcc",
+				"Module"
+			]
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/build/cvconfig.h"
+		},
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/build/opencv2/opencv_modules.hpp"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"Extra",
+			"opencv_mcc",
+			"Module"
+		],
+		"name" : "opencv_mcc"
+	}
+}

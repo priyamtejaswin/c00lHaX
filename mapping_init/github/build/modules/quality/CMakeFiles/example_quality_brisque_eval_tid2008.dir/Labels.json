@@ -1,0 +1,24 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/Users/tejaswin.p/THIS_LAPTOP_projects/c00lHaX/mapping_init/github/opencv_contrib-master/modules/quality/samples/brisque_eval_tid2008.cpp",
+			"labels" : 
+			[
+				"Extra",
+				"opencv_quality",
+				"Sample"
+			]
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"Extra",
+			"opencv_quality",
+			"Sample"
+		],
+		"name" : "example_quality_brisque_eval_tid2008"
+	}
+}
