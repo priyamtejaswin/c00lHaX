@@ -12,7 +12,7 @@ $$
 
 Aligned eqns
 $$
-\begin{aling*}
+\begin{align*}
 x &= \sqrt{y} \\
 y &= \sqrt{z}
 \end{align*}
