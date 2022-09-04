@@ -2,7 +2,7 @@
 % Priyam Tejaswin
 % Last updated: August 31st, 2022
 
-Main references are Wiki pages, and the citations therein. Notes are written in Markdown, and rendered using Pandoc: `pandoc --pdf-engine=xelatex trees.md -o tree.pdf -N --toc`
+Main references are Wiki pages, and the citations therein. Notes are written in Markdown, and rendered using Pandoc: `cat trees.md | ./filter.py | pandoc --pdf-engine=xelatex -o doc.pdf -N --toc`
 
 # Trees
 Some key concepts.
