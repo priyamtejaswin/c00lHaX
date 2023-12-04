@@ -53,6 +53,10 @@ Algorithm:
 
 The convergence criterion could be a minimum sample size per leaf or that the reduction in SSE has to exceed some threshold.
 
+### Alternate criteria
+
+You can use different metrics (like absolute error) for fitting the tree.
+
 ## Pruning
 In practice, we avoid the threshold convergence -- a better, more worthwhile split could come after a poor split. We rather let the tree get built with the min-samples criteria and then apply pruning.
 
@@ -96,6 +100,52 @@ Typically, features with many unique/partition values will have higher importanc
 
 Say you want to predict which of your customer's are likely to buy a "special" program. One of the input attributes might be the each customer's id-number. This attribute will have high IG/Gini scores, because it almost uniquely identifies individuals. But it will be a horrible predictor for new members.
 
+## Impurity measure
+Say a tree is being fit to reduce metric $m$. Once a feature $f$ is selected at a node $t$, we can compute its importance as follows
+
+$$
+\text{importance of }f = \frac{n_t}{N} \times \left( m_t - \left( \frac{n_{t \text{ left}}}{n_t}m_{t \text{ left}} + \frac{n_{t \text{ right}}}{n_t}m_{t \text{ right}} \right) \right)
+$$
+
+## Feature representations
+
+For continuous data, the splitting happens naturally. For categorical data, you can try to one-hot encode. But with high cardinality, this will 
+
+1. Explode data size
+2. Require very deep trees for exploration
+
+### Naive target encoding
+You could take the average of all your target data for each enum value. This will work, but lead to two problems.
+
+1. You are leaking the target data into the *predictors* data
+2. You don't have any way to impute this feature for unseen data
+
+### Historical target encoding
+A better way would be to average of the target data in the past, if you are following a time-dependency.
+
+### Optimal partitioning
+Outside of features with two enums, you will have to consider all possible subsets for determining the "split" criteria -- note that one-hot encoding also does not consider all possible subsets; it only considers one-vs-rest.
+
+A better way (determined by Fisher in his paper on "Grouping for Optimal Homogeniety") is to order your enums by the expected value of the class label. In binary classification, this corresponds to computing the average class score of every category $k$ as:
+
+$$
+\frac{\text{count where feature} = k \text{ and } y = 1}{\text{count where feature} = k}
+$$
+
+You then sort the categories by this value, and treat them like continuous feature split points.
+
+For regression, consider the RMSE of the subset where the "true" value is the mean of values in the subset. 
+
+### Feature bundling
+
+A popular technique in modern libraries, feature bundling will try to combine different mutually exclusive features (like the ones created by one-hot vectors) into smaller bundles without loss of information. Which can then be used as continuous features.
+
+## Why is tree fitting slow
+
+You have to sort all possible split positions in-order, for every node in the tree, then then consider every split point. For $F$ features and $N$ data points, this is a $F \times N \times N \log N$ operation.
+
+Modern libraries only consider a fixed-length histogram (256, or 512 buckets). This makes the split partitions fixed, and no sorting is required. Now, the complexity reduces to $F \times N$.
+
 # Tree Instability and Bagging
 A small change in the data can result in vastly different splits. This suggests high-variance. 
 
@@ -117,8 +167,16 @@ $$
 = \frac{\sigma^2}{n} 
 $$
 
+## What about the Bias?
+The Bias of a individual tree built using the Bootstrapped data will be *higher* than the bias of the tree with the full data, simply because the data is being repeated, and because of random feature selection it will not have access to all features for fitting. 
+
+But the gain from the variance reduction is what leads to better performance.
+
 # Random Forests
 After bagging, in the RF algorithm, every split is made from a **random subset** of features. This is done to further de-correlate the trees. For classification problems, the suggested number is $\sqrt{p}$. For regression, it's $p/3$. Here $p$ is the original number of features in the dataset.
+
+## What about the Bias?
+The bias of the random forest is the *same as the bias of an indivial Bootstrapped tree* because the limited feature space imposes further restrictions on the model.
 
 # Boosting
 > Can a set of weak learners create a single strong learner?
@@ -282,8 +340,58 @@ The model is then updated as $F_m(x) = F_{m-1}(x) + \alpha h_m(x)$. The pseudo-c
    4. Update the model $F_m(x) = F_{m-1}(x) + \alpha h_m(x)$
 3. Return $F_M()$ when completed
 
+## Some more theory
+
+Ideally, we'd like to solve the following optimization problem directly
+
+$$
+F_m(x) = F_{m-1}(x) + \arg\min_{h_m} \left[ \sum_{i=1}^N L(y_i, F_{m-1}(x_i) + h_m(x_i)) \right]
+$$
+
+but this might not be feasible for extremely complex functions. Instead, we take a small step *against* the direction of the gradient $\nabla_{h_m}$ which is defined as
+
+$$
+\frac{\partial }{\partial h_m} \sum_{i=1}^N L(y_i, F_{m-1}(x_i) + h(x_i))
+$$
+
+This is simplified by the Taylor expansion of the function $L(y_i, \cdot)$ at $F_{m-1}(x_i) + h_m(x_i)$, starting from $F_{m-1}(x_i)$:
+
+$$
+L(y_i, F_{m-1}(x_i) + h_m(x_i)) = L(y_i, F_{m-1}(x_i)) + \nabla_{F_{m-1}} L(y_i, F_{m-1}(x_i)) \cdot h_m(x_i) + \text{...}
+$$
+
+Taking the derivative w.r.t. $h_m()$, we get
+
+$$
+\nabla_{h_m} L(y_i, F_{m-1}(x_i) + h_m(x_i)) \sim \nabla_{F_{m-1}} L(y_i, F_{m-1}(x_i))
+$$
+
+giving us
+
+$$
+F_m(x) = F_{m-1}(x) - \alpha \nabla_{F_{m-1}} L(y_i, F_{m-1}(x_i))
+$$
+
+Remember, we want to learn a model that generalize to new inputs. Thus, our best model will be the one that *best predicts* the **negative gradient** term, implying we fit the our learner $h_m(x)$ to predict $\nabla_{F_{m-1}}L(y, F_{m-1})$ as the target. This gives us
+
+$$
+F_m(x) = F_{m-1}(x) + \alpha h_m(x)
+$$
+
+Finally, we solve for $\alpha$ by performing a line-search for minimizing the following objective
+
+$$
+\sum_{i=1}^N L(y, F_{m-1}(x_i) + \alpha h_m(x_i))
+$$
+
+With a known $\alpha$, our new model becomes
+
+$$
+F_m(x) = F_{m-1}(x) + \alpha h_m(x)
+$$
+
 # FastText
-> This work was before Transformers ...
+> *This work was before Transformers ...*
 
 Introduced by Facebook (pre-Transformer days) for learning distributed word-embeddings and large-scale text-classification. Main contributions:
 
@@ -366,7 +474,7 @@ This does not need to be normalized, since the context remains the same for all 
 One could also model spell-correction as a HMM state-decoding problem, by using heuristics for the transition and emission functions. But our approach is still better because our "transition" can consider forward contexts as well.
 
 # Address Tagging
-> This work was before Transformers ...
+> *This work was before Transformers ...*
 
 Performed Named-Entity-Recognition: BIO tagging format; weakly-supervised labels via fuzzy text matching. Input sequence was a string of address tokens: $X: [x_1, x_2, ..., x_n]$ and the output sequence was the labels: $Y: [y_1, y_2, ..., y_n]$ where each $y_i$ is one of $k$ label tokens.
 
@@ -383,8 +491,40 @@ We compute two scores. One from the forward pass ($s_f$), which attempts to gene
 
 The second is from the gold sequence ($s_g$) which we already have. Minimizing the NNL is equivalent to minimizing the difference: $s_f - s_g$. This loss is fed to PyTorch, which the performs a backward pass and updates all params.
 
-# Transformer
-> *See last page of notes.*
+# Clustering
+## Bottom-up (aglomerative)
+
+1. Treat each item as a separate cluster
+2. Merge clusters based on some metric
+3. Repeat [1 - 2] till you have a single cluster
+
+Different "linkage" metrics at a cluster level:
+
+* Single-linkage: Nearest neighbor similarity between closest members
+* Centroid: Distance between centroid of the clusters
+
+**Problems**: Slow and greedy
+
+## K-Means (partitioning)
+
+You receive $N$ points $x^1, ..., x^N$ and $K$ cluster classes.
+
+1. Randomly assign $K$ points to be the $K$ centers $\mu_k$
+2. Assign nearest points to each of the $K$ clusters
+3. Re-compute cluster centers $\mu_k$
+4. Repeat [2 - 3] till assignments stop changing, or max-iterations $L$ is reached
+
+K-Means attempts to minimize the distance between each point and it's assigned cluster center.
+
+**Problems**: Local-minima, bad seeds
+
+# SVM (max-margin classifiers)
+
+## Hard constraint
+
+## Soft constraint
+
+# Bayes Nets and D-separation
 
 # Statistics
 Just the important stuff ...
@@ -919,3 +1059,745 @@ $$
 Thus, the MSE will be 0, and the estimator is consistent.
 
 ### Matching of Moments
+
+You compute the empirical moments which are computed from the sample population, and match them against the theoretical moments (which are a function of the true parameters).
+$$
+\begin{align*}
+M_1 &= \frac{1}{n} \sum_i X_i \rightarrow \mathbb{E}[X_i] = \mu_1 \\
+M_2 &= \frac{1}{n} \sum_i X_i^2 \rightarrow \mathbb{E}[X_i^2] = \mu_2
+\end{align*}
+$$
+
+**Q.** For samples $X_1, X_2, X_3, ..., X_n \sim \mathcal{N}(\theta, \sigma^2)$, find point estimates for $(\theta, \sigma^2)$ using M.o.M. method.
+
+**A.** First compute the empirical moments. Next, the theoretical moments for $\mathcal{N}$ will be
+$$
+\begin{align*}
+    \mathbb{E}[X_1] &= \theta \\
+    \mathbb{E}[X_1^2] &= \sigma^2 + \mathbb{E}[X_1]^2 = \sigma^2 + \theta^2
+\end{align*}
+$$
+
+and you solve for the unknowns.
+
+### Maximmum Likelihood Estimation
+Given iid data sampled from a distribution $X_1, X_2, X_3, X_4, ..., X_n \sim f_\theta$, we can compute the likelihood of the data, for some value of $\theta$ as follows
+$$
+\mathcal{L}(\theta | X_1, X_2, ..., X_n) = \prod_{i=1}^n f_\theta(X_i)
+$$
+
+We try to find the $\hat \theta$ that maximizes $\mathcal{L}$. Some common tricks:
+
+* Work with the $\log \mathcal{L}$ so you have a sum of terms
+* Numerically solve $\frac{\partial}{\partial \theta_j} \log \mathcal{L}() = 0$ for each parameter
+* If more than one result, always check for maxima or minima using the 2nd derivative
+
+### Bayes Estimator
+For MoM and MLE, the unkown parameter $\theta$ is assumed to be fixed. Here, we have a prior over $\theta$, which gets updated via the Bayes rule
+$$
+\text{Conditional Posterior} = \frac{\text{Joint}}{\text{Marginal}} = \frac{\text{Likelihood} \times \text{Prior}}{\text{Marginal}}
+$$
+In the simplest case
+$$
+P(A | B) = \frac{P(A, B)}{P(B)} = \frac{P(B | A) \times P(A)}{\sum_i P(B | A = a_i) \times P(A = a_i)}
+$$
+
+For a prior distribution $\pi(\theta)$, the posterior becomes
+$$
+\pi(\theta | X_1, X_2, ..., X_n) = \frac{\pi(\theta) \times \mathcal{L}(\theta | X_1, X_2, ...)}{\int \pi(\theta) \times \mathcal{L}(\theta | X_1, X_2, ...) d\theta} \propto \pi(\theta) \times \mathcal{L}(\theta | X_1, X_2, ...)
+$$
+
+Finally, the Bayes Estimator is the expected posterior value
+$$
+\text{Bayes}(\theta) = \mathbb{E}[\theta | X_1, X_2, ..., X_n] = \int \theta \times \pi(\theta | X_1, X_2, ..., X_n) d\theta
+$$
+
+This is equivalent to saying $q = \sum_i P(A = a_i)\times P(B | A = a_i)$. The result will be independent of $\theta$ since you are integrating over it.
+
+## Theoretical Properties of MLE
+
+**Note**: MLE and MOM can be biased, and MOM does not always obey natural parameter restructions. In contrast, this cannot happen in MLE 
+
+$$
+\hat{\theta}_{\text{MLE}} = \arg \max_{\theta \in \Omega} \mathcal{L}(\theta | X_1, X_2, ..., X_n)
+$$
+
+since the optimization of $\theta$ is in its natural space $\Omega$.
+
+### Invariance
+If $\hat \theta_{n\ \text{MLE}}$ is the MLE estimate for $\theta$, then $\tau(\hat \theta_{n\ \text{MLE}})$ is the estimate for $\tau(\theta)$.
+
+### Consistency
+$P(\mid \hat \theta_{n\ \text{MLE}} - \theta \mid \geq \epsilon) \sim \rightarrow 0$
+
+### Fisher Information and Efficiency
+MLE will always have minimum variance across all estimators.
+
+$$
+\sqrt{n} (\hat \theta_{n\ \text{MLE}} - \theta) \rightarrow \mathcal{N} \left( 0, \frac{1}{\mathcal{I}(\theta)} \right)
+$$
+
+where $\mathcal{I}(\theta)$ is the Fisher Information.
+
+### KL Divergence
+The gap between two densities.
+$$
+\begin{align*}
+    D(f || g) &= \int_x f(x) \log \left( \frac{f(x)}{g(x)} \right) dx \\
+    &= \mathbb{E}_{x \sim f} \left[ \log \frac{f(x)}{g(x)} \right] \\
+    &\text{where  } x \text{ is generated from } f()
+\end{align*}
+$$
+
+**Q.** Can you show that $D(f || g) \geq 0$ for all $f() \neq g()$ and equal only if $f() = g()$?
+
+**A.** We begin with the definition and apply Jensen's inequality
+$$
+\begin{align*}
+    D &= \mathbb{E}_{x \sim f} \left[ \log \frac{f(x)}{g(x)} \right] \\
+    &= - \mathbb{E}_{x \sim f} \left[ \log \frac{g(x)}{f(x)} \right] \\
+    &= \mathbb{E}_{x \sim f} \left[ - \log \frac{g(x)}{f(x)} \right] \\
+    &\text{The function } - \log () \text{ is convex.} \\
+    & \geq -\log \mathbb{E}_{x \sim f} \left[ \frac{g(x)}{f(x)} \right] \\
+    &\geq - \log \int_{x \sim f} f(x) \frac{g(x)}{f(x)} dx \\
+    &\geq - \log(1) \\
+    &\geq 0
+\end{align*}
+$$
+
+### Identifiable Models
+For any two parameter configurations $\theta_1, \theta_2$ where $\theta_1 \neq \theta_2$, if $D(f_{\theta_1} || f_{\theta_2}) \geq 0$ then the model $f()$ is identifiable.
+
+### MLE and KL Divergence
+
+The MLE estimate maximizes the log-likelihood of the data as follows
+$$
+\begin{align*}
+    \mathcal{L}(\theta) &= \log \mathcal{L}(\theta | X_1, X_2, X_3, ..., X_n) \\
+    &= \log \prod_{i=1}^n f_\theta(X_i) \\
+    &= \sum_{i=1}^n \log f_\theta(X_i)
+\end{align*}
+$$
+
+Let $\theta_0$ be the true parameter for data generation. The empirical KL Divergence can then be defined as
+$$
+\begin{align*}
+    M_n(\theta) &= \sum_{i=1}^n \frac{1}{n} \log \frac{f_\theta(X_i)}{f_{\theta_0}(X_i)} \\
+    &= - \frac{1}{n} \sum_{i=1}^n  \log \frac{f_{\theta_0}(X_i)}{f_\theta(X_i)} \\
+    \implies - M_n(\theta) &= \frac{1}{n} \sum_{i=1}^n  \log \frac{f_{\theta_0}(X_i)}{f_\theta(X_i)}
+\end{align*}
+$$
+
+**Q.** Can you show that
+$$
+M_n(\theta) \rightarrow_P \mathbb{E}_{X_i \sim f_{\theta_0}} \log \frac{f_\theta(X_i)}{f_{\theta_0(X_i)}} = - D(f_{\theta_0} || f_\theta)
+$$
+
+**A.**
+$$
+\begin{align*}
+    M_n(\theta) &= \frac{1}{n} \sum_{i=1}^n \log \frac{f_\theta(X_i)}{f_{\theta_0}(X_i)}
+\end{align*}
+$$
+By Strong Law of Large Numbers, $\frac{1}{n} \sum_i X_i \rightarrow \mathbb{E}[X_i]$, i.e., sample mean approaches true mean as $n$ gets large.
+
+Which means, $\theta \rightarrow \theta_0$. So we can replace the empirical mean with $\mathbb{E}_{X_i \sim f_{\theta_0}}$.
+
+**In general, KL Divergence is always written as** $D(\text{true} || \text{pred})$. This way, when you use it like Cross Entropy, you'll have $f_{true}$ as the one-hot encoding values -- this is the target!
+
+**Q.** Can you show the Minimizing the KL divergence between the true parameter and the estimator returns the same result as maximizing the log-likelihood for a large number of samples?
+
+**A.** 
+$$
+\begin{align*}
+    &\arg\max_\theta \frac{1}{n} \sum_i \log f_\theta(X_i) \\
+    &\text{We can subtract the log likelihood with the true param,}\\
+    &\text{ and it will not change the optimization.}\\
+    &= \arg\max_\theta \frac{1}{n} \sum_i \log \frac{f_\theta(X_i)}{f_{\theta_0}(X_i)} \\
+    &= \arg\max_\theta \frac{1}{n} \sum_i - \log \frac{f_{\theta_0}(X_i)}{f_\theta(X_i)} \\
+    &= \arg\min_\theta \frac{1}{n} \sum_i \log \frac{f_{\theta_0}(X_i)}{f_\theta(X_i)} \\
+    &\text{Applying the Law of Large Numbers} \\
+    &= \arg\min_\theta \mathbb{E}_{X_i \sim f_{\theta_0}} \log \frac{f_{\theta_0}(X_i)}{f_\theta(X_i)} \\
+    &= \arg\min_\theta D(\theta_0 || \theta)
+\end{align*}
+$$
+
+## Hypothesis Testing
+You have some observed data $X_1, X_2, X_3, ..., X_n$ that you believe is generated from some function say $f()$, which is paramterized by $\theta$.
+
+Different models (with different parameters) are identified by different hypothesis. Typically, you specify a null hypothesis $H_0$ where $\theta \in \Theta_0$, and an alternate $H_1$ where $\theta \in \Theta_1$:
+
+$$
+\begin{align*}
+    H_0 &: X \sim f_{\theta \in \Theta_0} \\
+    H_1 &: X \sim f_{\theta \in \Theta_1}
+\end{align*}
+$$
+
+The space $\Theta$ can be a single point (for SIMPLE hypotheses) or a range of values (for COMPOSITE hypotheses).
+
+### Test Statistic
+You run tests to either reject $H_0$ or retain it. The general approach is as follows:
+1. Typically, you construct the test statistic as a function of the observed data: $T_n = f(X_1, X_2, X_3, ..., X_n)$
+2. Choose a critical value $t$, and define a rejection region $R$
+3. If $T_n \geq t$, or , $(X_1, X_2, X_3, ..., X_n) \in R$, then we reject the null hypothesis $H_0$. Else, we retain.
+
+For instance, if you have data $X_1, X_2, ..., X_n \sim \text{Bernoulli}(p)$, and your hypothesis are $H_0: p = \frac{1}{2}$ vs. $H_1: p \neq \frac{1}{2}$. Since the parameter here is the **bias** of the distribution, the right test statistic will be $T_n = \frac{1}{n} \sum_i X_i$.
+
+### Type I and Type II errors
+
+![Type I and Type II errors](type_errors_grid.jpeg){ width=400px }
+
+Since statistical models are probabilistic, we compute the *probability* of Type I and Type II errors. For example
+
+**Q.** Our data is generated $X \sim \mathcal{N}(\theta, 1)$. The null $H_0: \theta = 0$ vs $H_1: \theta = 2$. We reject the null hypothesis $H_0$ iff $X > 2.5$. What is the probability of Type I and Type II errors?
+
+**A.** 
+
+Type I: reject the null, when null is true.
+$$
+\begin{align*}
+    &P_{H_0, \theta = 0}(X \geq 2.5) \\
+    &= P_{H_0}(\mathcal{N}(\theta, 1) \geq 2.5) \\
+    &= P(\mathcal{N}(0, 1) \geq 2.5) \\
+    &= 1 - P(\mathcal{N}(0, 1) \leq 2.5) \\
+    &= 1 - \Phi(2.5)
+\end{align*}
+$$
+
+Type II: accept the null, when alt is true.
+$$
+\begin{align*}
+    &\text{Since} \text{ the test for rejecting the null is } X \geq 2.5, \\
+    &\text{the test for accepting the null is } X < 2.5 \\
+    &P_{H_1: \theta=2}(X < 2.5) \\
+    &= P_{H_1}(\mathcal{N}(\theta, 1) < 2.5) \\
+    &= P(\mathcal{N}(2, 1) < 2.5) \\
+    &= P(\mathcal{N}(2 - 2, 1) < 2.5 - 2) \\
+    &= P(\mathcal{N}(0, 1) < 0.5) \\
+    &= \Phi(0.5)
+\end{align*}
+$$
+
+### Statistical Significane
+
+A result is statistically significant, when it is very unlikely to have ocurred given the null hypothesis. The **significance level** of a test $\alpha$ is the probability of rejecting the null, given that the null is true -- a False Positive , or a Type I error.
+
+The confidence level $1 - \alpha$ is the probability of not rejecting the null hypothesis if the null were true.
+
+### Power of a test
+
+**Power** is the probability that the test *correctly rejects* the null hypothesis **when the alt is true**. We define a Type II error as the probability of incorrectly accepting the null $H_0$ when the alt was true -- i.e. a False Positive. If this quantity is $\beta$, then the power is $1 - \beta$, and it is the probabilty of avoiding a Type II error. The higher, the better.
+
+Formally,
+$$
+\text{Power}(t) = P(\text{rejecting } H_0 | \text{alt } H_1 \text{ is true})
+$$
+
+### Level of a test
+Similalry, **Level** is the probability that the test *correctly accepts* the null **when the null is true**. A higher Level implies a lower False Negative rate.
+
+Formally,
+$$
+\text{Level}(t) = P(\text{accepting } H_0 | \text{null } H_0 \text{ is true})
+$$
+
+### Pearson's $\chi$^2 Test
+A test for categorical data (following multinomial distributions) to evaluate how likely it is that any observed difference between the sets arose by chance.
+
+Here, the null hypothesis $H_0$ is that the frequency distribution of events observed in a sample are consistent with a particular theoretical distribution.
+
+But the test can be used for other comparisions also:
+
+* Homogeniety: Compare distribution of counts for two or more groups for the same categorical variable.
+* Independence: Between two variables, to see if they are dependent on one another.
+
+Say we have $n$ observations from a single multinomial variable, with $K$ possible outcomes each with theoretical probability $p_i$ and observed counts $o_i$. The test statistic is
+$$
+T_n = \sum_{i=1}^K \frac{(o_i - n \ p_i)^2}{n\ p_i}
+$$
+
+We now determine the degree of freedom:
+
+* For **goodness** of fit, this will be the $n_\text{categories} - n_\text{model params}$
+* For the other two applications, it is $n_\text{categories} - 1$
+
+With the degree of freedom, and a **confidence level** $(95\%, 99\%)$ we determine the threshold $t$. We then compare $T_n > t$. If this is true, then we reject the null hypothesis. 
+
+The value of $t$ at some confidence level (say $0.99$) is the $\chi^2$ quantile which covers $99\%$ of the distribution. It implies a very low chance of mistakingly rejecting the null when it was true. So if our $T_n$ exceeds it, then we can safely reject the null.
+
+## P values
+### Mendel's Experiment
+
+Mendell's theory predicts that the probability of pea plant falling in one of $4$ categories is
+
+$$
+p_0 = \left[ \frac{9}{16}, \frac{3}{16}, \frac{3}{16}, \frac{1}{16}  \right]
+$$
+
+The observed counts are $X = (315, 101, 108, 32)$, and the total counts are $556$. Can we say, with $95\%$ confidence that $X \sim p_0$?
+
+To solve this, we compute the $\chi^2$ test statistic
+$$
+T_n = \sum_{i=1}^4 \frac{(e_i - x_i)^2}{e_i}
+$$
+
+where the expected counts $e_i$ are $(312.75, 104.25, 104.25, 34.75)$. This gives us $T_n = 0.47$
+
+The degree-of-freedom is 3, so we determine the critical value $t$ at $95\%$ -- this is the $95^\text{th}$ quantile for d-o-f $3$. Thus, $t$ is assumed to be some *extreme* value -- a value to the right of this (belonging to the $5\%$ probabiility) is considered a rejection region. If $T_n > t$ then the null hypothesis (that the distributions are same) is rejected.
+
+In our case, $t = 7.815$, so we do not reject it.
+
+But, what if $T_n$ was $7$ -- would you be more or less sure of the test?
+
+### The P value
+
+Say $X$ is your observed data, and $X^*$ is independent data drawn from $f_{\theta_0}$, then the $p$ value is defined as
+
+$$
+p: P_{\theta_0} \left[ T_n(X^*) \geq T_n(X) \mid X \right]
+$$
+
+It measures the probability of having an observation that is even more extreme than the one you have at hand, assuming $H_0$ is true.
+
+1. You compute the $T_n(X)$ for your observed data $X$
+2. You draw random samples $X^* \sim f_{\theta_0}$ multiple times to get $X^1, X^2, X^3, ... X^K$ and compute $T_n^1, T_n^2, T_n^3, ..., T_n^K$ 
+3. You then evaluate how many times $T_n^k \geq T_n(X)$
+4. And you compute your $p$-value as
+
+$$
+p = \frac{\text{count } T_n^k \geq T_n(X)}{K}
+$$
+
+A small $p$-value implies that $T_n^k \geq T_n(X)$ for a very small $k$. Implying that $X$ would be unlikely under the null. And thus we can reject $H_0$ safely.
+
+Typically, the threshold for a *low* $p$-value is set by the researcher (usually $0.05$ or $0.01$).
+
+If $X^* \sim f_{\theta_0}$ has CDF $F_{\theta_0}$, then $p$-value becomes a random variable under the null
+
+$$
+p = P_{\theta_0} \left[ T_n^k \geq T_n(X) \right] = 1 - F_{\theta_0}(T_n(X))
+$$
+
+**Q.** Say $X_1, X_2, ..., X_n \sim \mathcal{N(\theta, 1)}$. We want to test if $H_0: \theta = 0$ or $H_1 : \theta > 0$. The test to reject the null is $\bar{X}_n \geq t$. If $n = 100$ and $\sum_{i=1}^n X_i = 40$, what is the $p$-value?
+
+**A.** From our previous discussion we know
+$$
+\begin{align*}
+    p &= P_{\theta_0} \left( T^*_n \geq T_n(X) \right) \\
+    &= P_{\theta_0} \left( \bar{X}^*_n \geq \bar{X}_n \right) \\
+    &= P_{\theta_0} \left( \sqrt n \frac{\bar{X}^*_n - \mu_0}{\sigma} \geq \sqrt n \frac{\bar{X}_n - \mu_0}{\sigma} \right) \\
+    &\text{Since this is under the null, } \mu_0 = 0, \sigma = 1 \text{ and } X^*_n \text{ is drawn from } \mathcal{N}(0, 1)\\
+    &= P_{\theta_0} \left( \mathcal{N(0, 1)} \geq \sqrt n \bar{X}_n \right) \\
+    &= 1 - \Phi(\sqrt n \bar{X}_n) \\
+    &= 1 - \Phi(10 \times 0.4) \\
+    &= 1 - \Phi(4) \\
+    &= 0.00003
+\end{align*}
+$$
+
+Meaning we can safely reject the null hypothesis of $X$ coming from $\mathcal{N(0, 1)}$. And this makes sense -- it is impossible for 100 values around 0 to add up to 40. But if $\bar{X}_n$ were $0.17$, then $1 - \Phi(1.7)$ gives us $0.044$, which we cannot reject.
+
+## Permutation tests
+Consider a two-sample tests with data $x_1, x_2, ..., x_n \sim f_x$ and $y_1, y_2, ..., y_m \sim f_y$ . The goal is to test the following null hypothesis $H_\theta$
+$$
+\text{Both samples are drawn from the same distribution: } f_X == f_Y
+$$
+
+Typically, your test statistic is the absolute difference in means
+$$
+T_\text{obs} = \left| \frac{1}{n} \sum_{i=1}^n x_i - \frac{1}{m} \sum_{j=1}^m y_i \right|
+$$
+
+We can use the null hypothesis to derive the P-value for permutation tests:
+
+* Under $H_\theta$, both samples were drawn from the same distribution. 
+* Hence, if samples were randomly permuted, the test statistic should not change (by a huge margin).
+
+$$
+\text{p-value} = \frac{1}{(n+m)!} \sum_{i=1}^{(n+m)!} \mathbb{I}_{T^i > T_\text{obs}}
+$$
+
+We reject the null if p-value $< 0.01$
+
+## Testing regression coefficients
+
+Refer to this [excellent link by Penn State](https://online.stat.psu.edu/stat415/lesson/7/7.5) if you want to revisit the topic.
+
+You have some some predictor $X$ and a target $Y$.  You are asked to find coefficients $a, b$ such that you have minimum error between $\hat{Y} = a + bX$.
+
+If you further assume that the errors are iid from $\mathcal N(0, 1)$, then you can rewrite
+$$
+Y = \hat{Y} + \epsilon = a + bX + \epsilon; \epsilon \sim \mathcal{N(0, 1)}
+$$
+
+The true parameters which describe the data $\alpha, \beta$ are unknow. What you have, are point estimates $a, b$ via the LSE formulation. But are your results statistically significant?
+
+In other words, how confidently can we say that there is *any* relationship between $X$ and $Y$? This becomes our null hypothesis $H_0: b = 0$. We analze this under some conditions.
+
+### Normal errors
+
+Since we have assumed that the error $\epsilon$ follows a $\mathcal{N}(0, \sigma^2)$ distribution, we can say that our estimator also folllows a normal $\mathcal{N}$ with mean $\beta$ and some variance defined by
+$$
+\text{Var}(b) = \frac{\sigma^2}{\sum_i (X_i - \bar{X})^2} = \frac{\sigma^2}{n \text{Var}(X)}
+$$
+
+Since $\sigma^2$ is unknown, we can consider it's unbiased estimate from the residuals
+$$
+\hat{\sigma^2} = \frac{1}{n-2} \sum_i \epsilon_i^2
+$$
+
+### Confidence intervals
+To reject the null hypothesis (that the true mean $\beta = 0$) we consider find high-confidence internvals for $\beta$ and reject the null if $0$ is out of the intervals. Concretely, we find $L$ and $U$ as a function of the observed data, such that
+
+$$
+P(L \leq \beta \leq U) = 0.95
+$$
+
+This can be re-written in the form of the Student's-t test
+$$
+P(q \leq \frac{b - \beta}{\sigma_b} \leq w) = 0.95
+$$
+where $\sigma_b$ can be determined empirically from the samples.
+
+Here, $q, w$ correspond to the $2.5^\text{th}$ and $97.5^\text{th}$ quantiles of the $t$-distribution with $n - 2$ degrees of freedom.
+
+### Properties of the LSE estimates
+
+* Will pass through the center of mass of the data $\bar{X}, \bar{Y}$
+* $\sum_i \epsilon_i = 0$
+* $a, b$ are unbiased
+* Under the normal error assumption, they are the same as the MLE estimates
+* If we have a lot of samples, then we can approximate the test statistic as a Normal
+
+### Summary of Conditions
+
+* **Linear**: The true relationship between $Y$ and $X$ is indeed linear
+* **Independence**: Samples that you observe are iid samples
+* **Normal**: For a given $x$, the distribution of $y$ is normal
+* **Equal variance**: For each given $x$, the distribution of $y$ should have the same variance
+
+# Significane testing in NLP
+* Statistical Hypothesis Tests for NLP <https://cs.stanford.edu/people/wmorgan/sigtest.pdf>
+
+## Single model performance
+> Statistical Significance Tests for Machine Translation Evaluation <https://aclanthology.org/W04-3250.pdf>
+
+You have a test set, a model, and some metric on this data. You now want to measure that this result is statistically significant.
+
+### Mean, T-test, and CLT
+If your metric is an average of scores over sentences, then the problem is a lot simpler. You can build confidence intervals aroud the true mean $\mu$ by constructing the student's t-statistic 
+
+$$
+t = \frac{\text{model}_{mean} - \mu}{\sigma_\text{model}}
+$$
+
+where $\sigma_\text{model}$ is the unbiased sample standard deviation ($\frac{1}{n-1}$). We can then lookup the t-distribution quantiles at $2.5\%$ and $97.5\%$ to arrive at a confidence interval
+
+$$
+P(q_l \leq t \leq q_u) = 0.95
+$$
+
+and reject the null hypothesis (that $H_0 = 50\%$) based on the interval. This works because we assume that we are sampling from the true sentence scores which is follows $\mathcal{N(\mu, \sigma^2)}$. Even if we do not make this assumption, since we're considering the mean of samples, CLT will kick in. And we can then use quantiles from the Normal.
+
+### Any other metric
+
+But say you're computing BLEU score, and you want to test significance for that? Perhaps that your model is statistically better than BLEU performance of a random model?
+
+You draw bootstrap samples of the same size as the test set and compute the metric. You do this multiple times, and construct the histogram which can be used to construct the confidence internvals.
+
+If your null hypothesis lies of of this, then it can be reject. Else it cannot be rejected.
+
+## Paired model performance
+> An Empirical Investigation of Statistical Significance in NLP <https://aclanthology.org/D12-1091.pdf>
+
+### Simple paired bootstrapping
+Say you have difference in performance as a metric. You model (on the test set) is $x\%$ better than the other model. But you want to test this, and establish the difference is not zero.
+
+So you draw bootstrap samples, and each time, you compute your statistic, then compute the difference, and again construct the histogram. Use this get confidence intervals, and then test the hypothesis.
+
+# LLM + Diffusion 
+
+## BPE
+
+> Iteratively replaces the most frequest **pair of bytes** with a single, unsued byte.
+
+You start with individual characters as your vocab, and keep merging iteratively till you hit your desired vocab size limit.
+
+To encode, break the longest contiguous chunk that exists in the merged vocab.
+
+**Advantage**: Intermediate representation is meaningful for the model, letting it deal with new/OOV words. 
+
+## Transformer
+
+![Summary of Transfomer block and auto-regressive model.](transformer_png_1.jpg)
+
+Things to remember:
+
+1. Word embedding + Position encoding
+2. Attention mechnism performs a scaling for stability -- this normalizes the range of the output/product of $Q^T \cdot V$
+3. A Transformer is auto-regressive
+4. Multi-headed attention
+5. During decoding the Q, V from the encoder attention becomes the Q, V for the decoder attention, and the $K$ are the past decoded tokens
+
+## BERT
+
+Masked-language-model on *whole words*, and not sub-words (or byte-pairs).
+
+> Check and add how the final embedding is designed.
+> Check and add how the [CLS] token is used for fine-tuning.
+> Check how the architecture is modified for different downstream applications.
+
+## GPT
+
+> Read highlights marked on the paper.
+> See how the auxiliary LM objective is implmented during task-specific fine-tuning.
+> > What samples do they use during this auxiliary LM objective? Is it just predicting the tokens in the task-specific input?
+
+
+## Fine-Tuning Language Models from Human Preferences
+<https://huggingface.co/blog/the_n_implementation_details_of_rlhf_with_ppo>
+
+## Fine Tuned Language Models are Few-Shot Learners (FLAN)
+
+## One Embedder, Any Task: Instruction-Finetuned Text Embeddings
+
+## SELF-INSTRUCT: Aligning Language Models with Self-Generated Instructions
+
+## Chain-of-Thought Prompting Elicits Reasoning in Large Language Models
+
+## Direct Preference Optimization: Your Language Model is Secretly a Reward Model
+
+## Hierarchical Text-Conditional Image Generation with CLIP Latents
+<https://www.youtube.com/watch?v=H45lF4sUgiE&ab_channel=ExplainingAI>
+
+# Interview Questions
+
+## Transformers
+### Are there drawbacks to the Transformer?
+Yes. Pair-wise self-attention is expensive. For sequence of length $t$ and dimension $d$, the self-attention takes $O(t^2 \cdot d)$. For a small $d$, this grows quandratic with time, but it is linear for LSTMs.
+
+They are also less sample-efficient. CNNs require far less data because of the spatial awareness they impose.
+
+## Linear/Logistic Regression
+### What are the assumptions behind Linear Regression?
+
+1. A linear relationship between the predictors and the target.
+2. Predictors are independent (no correlation).
+3. Residual errors are distributed normally.
+
+## Dropout
+By randomly "zeroing" activations, the Dropout prevents the network from relying on a *few* inputs, and instead focuses on generalizing to other/more inputs.
+
+### Train vs Test?
+During training, you just set a threshold. On average, an activattion will be non-zero $p\%$ of the time.
+
+During testing, if we don't *drop* activations, proceeding layers will receive much higher inputs. So at test time, you multiply every activation with $p$.
+
+## Weight inits
+They matter. Typically, you should account for the size (or dimension) of the embedding. Eventually, you will do some operation by adding/projecting across the size of the weights or the embeddings, and you'd like for the operation to be "contained".
+
+This is why, most methods have the variance as a funcion of the in/out/size.
+
+### Xavier vs Kaiming (He)?
+Some initializations are designed for certain activation functions. Xavier initialization was designed for $Tanh()$. Kaiming He initializaion was designed for ReLU. 
+
+## Batch Norm
+
+### What is covariate shift?
+The inputs of a DNN, as they move through different layers, experience a covariate shift -- empirically **we observe changes in the mean and variance of the inputs to the internal layers**.
+
+As parameters of the preceeding layers change, the distribution of the inputs to the current layer keeps changing, and the network has to constantly adjust for this.
+
+### How does Batch Norm help?
+
+Batch Norm is applied to the output activation of a layer, before being fed to the next layer. It tries to prevent these shifts for more stable and faster training.
+
+Other advantages:
+* Allows for training with higher learning rates
+* Acts as regularizer
+* Robustness to different init schemes
+
+### Maths behind it?
+
+Say input to current layer is $\vec x = [x^1, x^2, x^3, ..., x^d]$. From each unit, we subtract the mean and divide by std for that unit $i$ across the batch. Let the standardized input be $\hat{\vec x}$.
+
+This is transformed to $\hat y^d = \gamma^d \hat{x}^d + \beta^d$ where $\gamma^d, \beta^d$ are learned for each unit/dimension via backprop. 
+
+### What about inference time?
+
+You don't always have a batch during inference. Typically, you track the moving average and variance of the training batches (which converge to the full data moments in expectation) and these are used for the inference samples.
+
+### Issues?
+Dependent on the batch and batch size. Not clear how to apply to recurrent networks.
+
+## Layer Norm
+
+### Why is this needed?
+BN is dependent on the batch and batch-size -- it's not clear how to handle a single sample. Also not clear how to deal with recurrent networks.
+
+This is applied pre-activation.
+
+The normalization is computed across different channels for each sample.
+
+## Imbalanced dataset tricks
+Cost-sensitive classification.
+
+## Model calibration
+
+### Why do you need this?
+Often, you don't need a label, but also a probability value. In most cases, even if you have a $\text{sigmoid}$, the output is not calibrated.
+
+When a calibrated model gives you a score of $0.8$ it should suggest that roughly $80\%$ of the samples with scores close to $0.8$ are actually labelled positive.
+
+You can observe this by plotting a calibration curve.
+
+### How do you calibrate a classifier?
+
+You take the *soft* scores from your current model -- say a RFClassifier. And you fit a logistic regressor on top of the scores (with params $a, b$) using out-of-training data.
+
+So for this data, your $\hat{y}$ will be
+
+$$
+\hat y = \text{sigmoid}(a\cdot y + b)
+$$
+
+and you learn $a, b$ from the regression.
+
+## TF-IDF
+Given a query of tokens, we can rank documents by summing the tf-idf scores of all query terms present in that document. It is composed to two parts
+
+### tf (Normlized Term Frequency)
+For each document $d$ in the corpus, and each term $t$ in $d$, we compute the \text{term-frequency} for each $t$ in its respective $d$ as follows
+
+$$
+\text{tf}(t, d) = \frac{\text{count of } t \text{ in } d }{\text{length of }d}
+$$
+
+This gives higher score to more frequent terms.
+
+### idf (Log Inverse Normalized Document Frequency)
+For each unique term in the corpus, we determine the inverse of the fraction of times it appears in the corpus, as follows
+
+$$
+\text{idf}(t) = \log \left( \frac{D}{\sum_{d=1}^D \mathbb{I}[t \in d]} \right)
+$$
+
+This gives higher score to terms which are not present in most documents.
+
+### Retrieval
+Given query tokens $t_q; q \in [1, Q]$, we can score each document $d$ in the corpus as follows
+$$
+\text{tf-idf}(\text{query}, d) = \sum_{q=1}^Q \mathbb{I}[t_q \in d] \cdot \text{tf}(t_q, d) \cdot \text{idf}(t_q)
+$$
+
+## Can you do binary search?
+
+```python
+def bisect_search(numbers, target):
+    """
+    Return position if target is in numbers,
+    or -1 if not.
+    """
+    start = 0
+    end = len(numbers)  # There is no `-1`!
+
+    while start < end:
+        mid = start + (end - start) // 2
+        if target == number[mid]:
+            return mid
+        else:
+            if target > numbers[mid]:
+                start = mid + 1
+            else:
+                end = mid
+
+    return -1
+```
+
+For `bisect_left`, where all numbers left of `position` are stricly smaller:
+
+```python
+def bisect_left(numbers, target):
+    """
+    Return position so that all numbers left
+    of position are strictly less than target.
+    """
+    start = 0
+    end = len(numbers)  # Again, there's no `-1`!
+
+    while start < end:
+        mid = start + (end - start)//2
+        if target < numbers[mid]:
+            # This `if` condition will become
+            # `if target <= numbers[mid]:` for
+            # a `bisect_right` search.
+            start = mid + 1
+        else:
+            end = mid
+
+    return start
+```
+
+## What does "distributed" mean in "Distributed Word Vector Representations"?
+Moving away from a one-hot representation, and more towards capturing the distribution of tokens *around* the word, and using this distribution to represent a word.
+
+## Why are RNN/Transformer embeddings contexualized? And Word2Vec (or "distributed" embeddings ) is not?
+Word2Vec is not contexualized because you end up with one representaion that is fixed, and does not change based on the neighboring words. In a RNN, or a sequence model, the representation gets updated based on the previous tokens (in an RNN) or all other tokens (in a Transformer).
+
+## Are weights shared in a MLP feed-forward language model?
+No. Weights are separate for each dimension of the embedding. 
+
+## Metrics
+### Precision vs Recall
+
+If you have a binary model, you prediction is a score between $0$ and $1$. This will have to be thresholded at some value $t$ for predicting a class. Once you have classes for predictions, you can plot the **confusion matrix**:
+
+![Confusion matrix](confusion.png){ width=200px }
+
+**Precision** is the fraction of right answers in all your **positive predictions**.
+
+**Recall** is the fraction of right answers in all **positive samples**.
+
+### F-1 score
+$$
+\text{F}_1 = \frac{2}{\frac{1}{P} + \frac{1}{R}}
+$$
+
+This is another good "summary" for choosing a model. Highest F1 will account for both Precision and Recall.
+
+### Different thresholds, and PR-curves?
+But you can get different numbers for different thresholds? Yes! So you can draw a plot with the **Recall** on the X-axis, and the **Precision** on the Y-axis, for different thresholds. 
+
+* Now you can see the tradeoff and select a threshold
+* The best combination will be the F-1 score (harmonic mean of Precision and Recall)
+* A random model will be a straight line for $y = \text{Empirical Probability of Class 1}$
+* You can also compute the area under the curve -- this is the **mAP**
+
+Empirically this will be
+$$
+\text{mAP} = \sum_{t=2}^T (R_t - R_{t-1}) \cdot P_t
+$$
+
+
+### Why mAP?
+
+* You can compare two models
+* If you care about the positive class more -- business requirement makes it more important
+* If the data is heavily imbalanced
+
+### What about ROC?
+
+You can also construct a plot between the True-Positive rate, and False-Positive rate. This is useful in some other scenarios
+
+* If you care equally about both classes
+* If your data is balanced
+
+It does not work very well with imbalanced data because the FP-rate = $FP/\text{Negative Samples}$. This will go down when the True Negatives are in greater quantity
+
+### What about calibration?
+
+Generally, you don't care about calibration. Because you set the threshold by looking at the PR-curve. But say you wanted to use the probability. Say you are computing the probability of click or no-click on an Ad, and each click gives you money.
+
+Now your probability must be calibrated. You can check by constructing  calibration curves. 
+
