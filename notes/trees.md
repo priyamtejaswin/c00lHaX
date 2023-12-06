@@ -1520,7 +1520,7 @@ So you draw bootstrap samples, and each time, you compute your statistic, then c
 
 ## BPE
 
-> Iteratively replaces the most frequest **pair of bytes** with a single, unsued byte.
+> *Iteratively replaces the most frequest **pair of bytes** with a single, unsued byte.*
 
 You start with individual characters as your vocab, and keep merging iteratively till you hit your desired vocab size limit.
 
@@ -1542,18 +1542,35 @@ Things to remember:
 
 ## BERT
 
-Masked-language-model on *whole words*, and not sub-words (or byte-pairs).
+![BERT training and pre-training setup.](bert_architecture.png)
 
-> Check and add how the final embedding is designed.
-> Check and add how the [CLS] token is used for fine-tuning.
-> Check how the architecture is modified for different downstream applications.
+Things to remember:
+
+1. Masked-language-model on *whole words*, and not sub-words (or byte-pairs), for individual sentences.
+2. $e_{\text{Token}} = e_{\text{BPE}} + e_{\text{Segment(A/B)}} + e_{\text{Position}}$
+3. During fine-tuning, all params are updated.
+4. For "classification" type tasks, the `[CLS]` token is fed to a classifier.
+5. For "token-level" tasks (like tagging, or span-prediction in QA), the token embeddings are fed forward.
+
+### Span prediction
+For span-prediction, you append two additional vectors ($S$, $E$) to the sequence, and compute a probabilty of every word being a "start" and "end". You then select the highgest scoring span pair, and this score will be maximized.
 
 ## GPT
 
-> Read highlights marked on the paper.
-> See how the auxiliary LM objective is implmented during task-specific fine-tuning.
-> > What samples do they use during this auxiliary LM objective? Is it just predicting the tokens in the task-specific input?
+Things to remember:
 
+1. A **decoder-only** architecture.
+2. Self-attention over the input sequence, to predict the immediate next token:
+3. `<sos>` predicts the first token, and the last token predicts `<eos>`.
+4. Once pre-trained on the LM task, it is fine-tuned for specific down-stream tasks, along with an auxiliary LM objective on the input segments.
+5. They use *learned position embeddings* instead of the sin-cos ones.
+
+### Downstream
+All tasks are classification-type tasks (classification, entailment, similarity, MCQs).
+For each task:
+1. Special tokens (`[Start], [Delim], [Extract]`) are added as needed.
+2. The `[Extract]` token is projected/transformed for the final task.
+3. The text segments (between the special tokens) are used for LM loss (this is the auxiliary part).
 
 ## Fine-Tuning Language Models from Human Preferences
 <https://huggingface.co/blog/the_n_implementation_details_of_rlhf_with_ppo>
