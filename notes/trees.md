@@ -1516,6 +1516,15 @@ Say you have difference in performance as a metric. You model (on the test set) 
 
 So you draw bootstrap samples, and each time, you compute your statistic, then compute the difference, and again construct the histogram. Use this get confidence intervals, and then test the hypothesis.
 
+# Optimizers
+
+## Batch GD, SGD, Momentum, etc, etc, Adam.
+<https://arxiv.org/pdf/1609.04747.pdf>
+
+## Trust Region Optimization
+
+## Conjugate GD
+
 # LLM + Diffusion 
 
 ## BPE
@@ -1584,6 +1593,8 @@ For each task:
 ## Chain-of-Thought Prompting Elicits Reasoning in Large Language Models
 
 ## Direct Preference Optimization: Your Language Model is Secretly a Reward Model
+
+## PPO vs DPO vs KTO (Stanford's Human Oriented Loss Objective)
 
 ## Hierarchical Text-Conditional Image Generation with CLIP Latents
 <https://www.youtube.com/watch?v=H45lF4sUgiE&ab_channel=ExplainingAI>
