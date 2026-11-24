@@ -20,3 +20,4 @@ fast_corner/box
 structure_learning/*.cpkl
 mapping_init/thirdparty/
 /mapping_init/github/
+advent_of_code/.venv/
