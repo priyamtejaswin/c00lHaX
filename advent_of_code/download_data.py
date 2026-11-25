@@ -1,4 +1,4 @@
-# A script to download input data from AoC urls.
+# A script to download input data from AoC urls and create a empty py file.
 
 import sys
 from pathlib import Path
@@ -38,4 +38,8 @@ response = requests.get(
 )
 response.raise_for_status()
 dl_file.write_bytes(response.content)
+print("Done!")
+print("Creating empty py file for the solution ...")
+py_file = dl_path / "main.py"
+py_file.touch(exist_ok=False)
 print("Done!")
