@@ -21,3 +21,6 @@ structure_learning/*.cpkl
 mapping_init/thirdparty/
 /mapping_init/github/
 advent_of_code/.venv/
+# Swift Package Manager generated build and local IDE state
+advent_of_code/swift/.build/
+advent_of_code/swift/.swiftpm/
